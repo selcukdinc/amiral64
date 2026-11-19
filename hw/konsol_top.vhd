@@ -1,5 +1,5 @@
 -- Retro konsol: top level for the Digilent Nexys 4 DDR.
--- K0: clocking, VGA test pattern, 7-segment frame counter, switches -> LEDs.
+-- Clocking and pins around konsol_core. Until the PPU exists (K2) the screen shows a test pattern.
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -35,6 +35,9 @@ architecture rtl of konsol_top is
   signal x, y : unsigned(9 downto 0);
   signal frames : unsigned(31 downto 0) := (others => '0');
   signal rgb : std_logic_vector(11 downto 0);
+  signal digits : std_logic_vector(31 downto 0);
+  signal blank, dots : std_logic_vector(7 downto 0);
+  signal rgb16, rgb17 : std_logic_vector(2 downto 0);
 begin
   clocks : entity work.clock_reset port map (clk100 => CLK100MHZ, cpu_resetn => CPU_RESETN, clk => clk, rst => rst);
 
@@ -69,13 +72,16 @@ begin
   VGA_G <= rgb(7 downto 4);
   VGA_B <= rgb(3 downto 0);
 
-  display : entity work.seg7
-    port map (clk => clk, rst => rst, value => std_logic_vector(frames), blank => x"00", dots => x"00",
-              seg => SEG, dp => DP, an => AN);
+  core : entity work.konsol_core
+    port map (clk => clk, rst => rst, sw => SW, buttons => BTNC & BTNU & BTNL & BTNR & BTND, leds => LED,
+              rgb16 => rgb16, rgb17 => rgb17, digits => digits, digit_blank => blank, digit_dots => dots,
+              frame_tick => frame_start, dbg_test_we => open, dbg_test_code => open, dbg_addr => open, dbg_cpu_en => open);
 
-  LED <= SW;
-  LED16_R <= '0'; LED16_G <= not rst; LED16_B <= '0';
-  LED17_R <= '0'; LED17_G <= '0'; LED17_B <= '0';
+  display : entity work.seg7
+    port map (clk => clk, rst => rst, value => digits, blank => blank, dots => dots, seg => SEG, dp => DP, an => AN);
+
+  LED16_R <= rgb16(2); LED16_G <= rgb16(1); LED16_B <= rgb16(0);
+  LED17_R <= rgb17(2); LED17_G <= rgb17(1); LED17_B <= rgb17(0);
   UART_RXD_OUT <= '1';
   AUD_PWM <= '0';
   AUD_SD <= '0';
