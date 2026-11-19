@@ -21,6 +21,7 @@ entity konsol_core is
     nes_data   : in  std_logic_vector(3 downto 0);
     uart_txd   : out std_logic;     -- to the PC
     uart_rxd   : in  std_logic;     -- from the PC
+    aud_pwm, aud_sd : out std_logic;
     -- VGA
     vga_rgb    : out std_logic_vector(11 downto 0);
     vga_hs, vga_vs : out std_logic;
@@ -67,6 +68,7 @@ architecture rtl of konsol_core is
   signal uart_q : std_logic_vector(7 downto 0);
   signal u_busy, u_avail, u_ovr : std_logic;
   signal u_rxd : std_logic_vector(7 downto 0);
+  signal apu_q : std_logic_vector(7 downto 0);
 begin
   -- CPU clock enable: one CPU cycle every CPU_DIV_FAST (or CPU_DIV_SLOW) system clocks. Block RAM reads
   -- take one clock, so the data for the address the CPU put out is ready long before the next enable.
@@ -173,6 +175,10 @@ begin
               addr => a(5 downto 0), rdata => input_q, sw => sw, buttons => buttons,
               ps2_clk => ps2_clk, ps2_data => ps2_data, nes_latch => nes_latch, nes_clk => nes_clk, nes_data => nes_data);
 
+  sound : entity work.apu
+    port map (clk => clk, rst => rst, frame_tick => frame_tick, we => io_we(IO_APU), addr => a(4 downto 0),
+              wdata => cpu_do, rdata => apu_q, level => open, aud_pwm => aud_pwm, aud_sd => aud_sd, pwm_bit => open);
+
   -- UART page: $8500 data (write = send, read = next received byte), $8501 bit0 received, bit1 sending, bit2 overrun
   serial : entity work.uart
     port map (clk => clk, rst => rst, tx_start => io_we(IO_UART) and not a(0), tx_data => cpu_do, tx_busy => u_busy,
@@ -196,7 +202,7 @@ begin
     x"4B" when x"00", KONSOL_VERSION when x"01", "0000000" & slow when x"02", test_code when x"FF", x"00" when others;
 
   with io_page select io_q <=
-    ppu_q when IO_PPU, input_q when IO_INPUT, uart_q when IO_UART, timer_q when IO_TIMER, disp_q when IO_DISP, sys_q when IO_SYS, x"00" when others;
+    ppu_q when IO_PPU, apu_q when IO_APU, input_q when IO_INPUT, uart_q when IO_UART, timer_q when IO_TIMER, disp_q when IO_DISP, sys_q when IO_SYS, x"00" when others;
 
   cpu_di <= ram_q when sel_ram = '1' else
             game_q when sel_game = '1' else
