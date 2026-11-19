@@ -9,6 +9,9 @@ add_files hw/bram.vhd
 add_files hw/bram_dp.vhd
 add_files hw/ppu.vhd
 add_files hw/display_io.vhd
+add_files hw/ps2_rx.vhd
+add_files hw/uart.vhd
+add_files hw/input_io.vhd
 add_files hw/timer_io.vhd
 add_files hw/clock_reset.vhd
 add_files hw/vga_timing.vhd
@@ -24,4 +27,7 @@ add_files -fileset sim_1 hw/sim/tb_cpu_k1.vhd
 add_files -fileset sim_1 hw/sim/tb_ppu.vhd
 add_files -fileset sim_1 hw/sim/tb_ppu_cpu.vhd
 add_files -fileset sim_1 sw/build/ppucpu.mem
+add_files -fileset sim_1 hw/sim/tb_input.vhd
+add_files -fileset sim_1 hw/sim/tb_uart_cpu.vhd
+add_files -fileset sim_1 sw/build/iotest.mem
 add_files -fileset sim_1 sw/build/cputest.mem

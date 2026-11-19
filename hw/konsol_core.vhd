@@ -16,6 +16,11 @@ entity konsol_core is
     rgb16, rgb17 : out std_logic_vector(2 downto 0);
     digits     : out std_logic_vector(31 downto 0);
     digit_blank, digit_dots : out std_logic_vector(7 downto 0);
+    ps2_clk, ps2_data : in std_logic;
+    nes_latch, nes_clk : out std_logic;
+    nes_data   : in  std_logic_vector(3 downto 0);
+    uart_txd   : out std_logic;     -- to the PC
+    uart_rxd   : in  std_logic;     -- from the PC
     -- VGA
     vga_rgb    : out std_logic_vector(11 downto 0);
     vga_hs, vga_vs : out std_logic;
@@ -59,6 +64,9 @@ architecture rtl of konsol_core is
   signal dma_addr, dma_data : std_logic_vector(7 downto 0);
   signal ram_addr : std_logic_vector(14 downto 0);
   signal cpu_en_raw : std_logic;
+  signal uart_q : std_logic_vector(7 downto 0);
+  signal u_busy, u_avail, u_ovr : std_logic;
+  signal u_rxd : std_logic_vector(7 downto 0);
 begin
   -- CPU clock enable: one CPU cycle every CPU_DIV_FAST (or CPU_DIV_SLOW) system clocks. Block RAM reads
   -- take one clock, so the data for the address the CPU put out is ready long before the next enable.
@@ -160,10 +168,17 @@ begin
     port map (clk => clk, rst => rst, frame_tick => frame_tick, we => io_we(IO_TIMER), re => io_re(IO_TIMER),
               addr => a(3 downto 0), wdata => cpu_do, rdata => timer_q, irq => timer_irq);
 
-  -- Input page (K1: switches and buttons; controllers and keyboard come in K4)
-  --   $8208 SW[7:0]  $8209 SW[15:8]  $820A buttons (bit0 C, 1 U, 2 L, 3 R, 4 D)
-  with a(3 downto 0) select input_q <=
-    sw(7 downto 0) when x"8", sw(15 downto 8) when x"9", "000" & buttons when x"A", x"00" when others;
+  inputs : entity work.input_io
+    port map (clk => clk, rst => rst, frame_tick => frame_tick, we => io_we(IO_INPUT), re => io_re(IO_INPUT),
+              addr => a(5 downto 0), rdata => input_q, sw => sw, buttons => buttons,
+              ps2_clk => ps2_clk, ps2_data => ps2_data, nes_latch => nes_latch, nes_clk => nes_clk, nes_data => nes_data);
+
+  -- UART page: $8500 data (write = send, read = next received byte), $8501 bit0 received, bit1 sending, bit2 overrun
+  serial : entity work.uart
+    port map (clk => clk, rst => rst, tx_start => io_we(IO_UART) and not a(0), tx_data => cpu_do, tx_busy => u_busy,
+              txd => uart_txd, rxd => uart_rxd, rx_pop => io_re(IO_UART) and not a(0) and not a(1) and not a(2) and not a(3),
+              rx_avail => u_avail, rx_data => u_rxd, rx_overrun => u_ovr);
+  uart_q <= u_rxd when a(3 downto 0) = x"0" else "00000" & u_ovr & u_busy & u_avail;
 
   -- System page: $8700 id "K", $8701 version, $8702 CPU speed (bit0: 1 = slow 1.79 MHz), $87FF test result
   process (clk)
@@ -181,7 +196,7 @@ begin
     x"4B" when x"00", KONSOL_VERSION when x"01", "0000000" & slow when x"02", test_code when x"FF", x"00" when others;
 
   with io_page select io_q <=
-    ppu_q when IO_PPU, input_q when IO_INPUT, timer_q when IO_TIMER, disp_q when IO_DISP, sys_q when IO_SYS, x"00" when others;
+    ppu_q when IO_PPU, input_q when IO_INPUT, uart_q when IO_UART, timer_q when IO_TIMER, disp_q when IO_DISP, sys_q when IO_SYS, x"00" when others;
 
   cpu_di <= ram_q when sel_ram = '1' else
             game_q when sel_game = '1' else

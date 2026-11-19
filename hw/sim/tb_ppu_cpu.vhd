@@ -19,7 +19,8 @@ begin
   dut : entity work.konsol_core
     generic map (BOOT_ROM => "ppucpu.mem")
     port map (clk => clk, rst => rst, sw => x"1234", buttons => "00000", leds => leds, rgb16 => open, rgb17 => open,
-              digits => open, digit_blank => open, digit_dots => open, vga_rgb => open, vga_hs => open, vga_vs => open,
+              digits => open, digit_blank => open, digit_dots => open, ps2_clk => '1', ps2_data => '1', nes_latch => open, nes_clk => open, nes_data => "1111",
+              uart_txd => open, uart_rxd => '1', vga_rgb => open, vga_hs => open, vga_vs => open,
               dbg_test_we => test_we, dbg_test_code => code, dbg_addr => addr, dbg_cpu_en => cpu_en);
   process
   begin

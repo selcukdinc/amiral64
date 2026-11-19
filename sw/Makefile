@@ -5,7 +5,7 @@ LD65 ?= ld65
 BIN2MEM = ../../Scripts/bin2mem.py
 B = build
 
-ROMS = $(B)/boot.mem $(B)/cputest.mem $(B)/ppucpu.mem
+ROMS = $(B)/boot.mem $(B)/cputest.mem $(B)/ppucpu.mem $(B)/iotest.mem
 
 all: $(ROMS)
 

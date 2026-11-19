@@ -41,6 +41,8 @@ begin
   core : entity work.konsol_core
     port map (clk => clk, rst => rst, sw => SW, buttons => BTNC & BTNU & BTNL & BTNR & BTND, leds => LED,
               rgb16 => rgb16, rgb17 => rgb17, digits => digits, digit_blank => blank, digit_dots => dots,
+              ps2_clk => PS2_CLK, ps2_data => PS2_DATA, nes_latch => NES_LATCH, nes_clk => NES_CLK, nes_data => NES_DATA,
+              uart_txd => UART_RXD_OUT, uart_rxd => UART_TXD_IN,
               vga_rgb => rgb, vga_hs => VGA_HS, vga_vs => VGA_VS, dbg_test_we => open, dbg_test_code => open, dbg_addr => open, dbg_cpu_en => open);
 
   display : entity work.seg7
@@ -52,11 +54,8 @@ begin
 
   LED16_R <= rgb16(2); LED16_G <= rgb16(1); LED16_B <= rgb16(0);
   LED17_R <= rgb17(2); LED17_G <= rgb17(1); LED17_B <= rgb17(0);
-  UART_RXD_OUT <= '1';
   AUD_PWM <= '0';
   AUD_SD <= '0';
-  NES_LATCH <= '0';
-  NES_CLK <= '1';
   QSPI_CSN <= '1';
   QSPI_DQ <= (others => 'Z');
 end architecture;
