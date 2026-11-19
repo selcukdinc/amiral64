@@ -26,6 +26,7 @@ design=(${(f)"$(sed -n 's/^add_files  *\(hw\/[^ ]*\.vhd\).*$/\1/p' "$K/vivado/so
 simsrc=(${(f)"$(sed -n 's/^add_files -fileset sim_1  *\(.*\.vhd\)$/\1/p' "$K/vivado/sources.tcl")"})
 work="$B/ghdl"; rm -rf "$work"; mkdir -p "$work"
 for m in "$K"/hw/*.mem(N) "$K"/sw/build/*.mem(N); do cp "$m" "$work"/; done
+python3 "$K/tools/ppu_model.py" scene 1 "$work"   # PPU testbench scene + expected frame
 opts=(--std=08 -fsynopsys --workdir="$work" --work=xil_defaultlib)
 if ! (cd "$K" && "$GHDL" -a $opts $design $simsrc) > "$B/analyze.log" 2>&1; then
   echo "FAIL  GHDL analysis (see $B/analyze.log)"; head -5 "$B/analyze.log"; exit 1
