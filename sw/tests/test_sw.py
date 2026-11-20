@@ -43,7 +43,7 @@ for t in ("cputest", "ppucpu"):
     check(f"{t} on the model", k.test == 1, f"test code {k.test}")
 
 # boot ROM: logo, then the menu lists the cartridge's games
-cart = rom("cart.bin")
+cart = rom("carttest.bin")
 k = run(Konsol(rom("boot.bin"), cart), 30, shot="logo.png")
 check("logo shows the title", "RETRO KONSOL" in screen_text(k), screen_text(k))
 check("start-up jingle plays", any(r == 0 and v for _, r, v in k.apu_log))
@@ -73,6 +73,58 @@ txt = screen_text(k)
 check("flash cartridge preferred", "FLASH OYUN A" in txt and "FLASH" in txt, txt)
 k = run(Konsol(rom("boot.bin"), cart), 150)
 check("BRAM cartridge when the flash is empty", "TEST OYUN A" in screen_text(k) and "BRAM" in screen_text(k))
+
+# ---------------------------------------------------------------- games
+def load_game(name):
+    """Boot ROM in ROM, the game at $9000, started directly. Returns (konsol, symbols)."""
+    k = Konsol(rom("boot.bin"))
+    g = rom(f"game_{name}.bin")
+    k.game[:len(g)] = g
+    k.pc = 0x9000
+    syms = {}
+    for l in open(os.path.join(B, f"game_{name}.lbl")):
+        _, addr, label = l.split()
+        syms[label.lstrip(".")] = int(addr, 16)
+    return k, syms
+
+def hold(k, mask, frames, player=0):
+    k.pads[player] = mask
+    run(k, frames)
+    k.pads[player] = 0
+    run(k, 2)
+
+def peek(k, syms, name, off=0, size=1):
+    a = syms["_" + name] + off
+    v = 0
+    for i in range(size):
+        v |= k.rd(a + i) << (8 * i)
+    return v
+
+k, S = load_game("kristal")
+check("kristal: fits in 20 KB", len(rom("game_kristal.bin")) <= 0x5000)
+run(k, 10, shot="kristal_title.png")
+check("kristal: title screen", "KRISTAL OCAK" in screen_text(k))
+hold(k, 0x80, 2)
+run(k, 10, shot="kristal_level1.png")
+check("kristal: level 1 drawn", "KRISTAL 00/10" in screen_text(k), screen_text(k))
+W = 32
+cell = lambda x, y: peek(k, S, "map", y * W + x) & 15
+check("kristal: hero starts at (1,1)", peek(k, S, "hero_x") == 1 and peek(k, S, "hero_y") == 1)
+hold(k, 0x01, 6 * 5)                     # right x5
+check("kristal: walks right through dirt", peek(k, S, "hero_x") == 6 and cell(5, 1) == 0,
+      f"x={peek(k, S, 'hero_x')}")
+hold(k, 0x04, 6)                          # down
+hold(k, 0x01, 6)                          # right: under the rock at (7,1)
+hold(k, 0x01, 6)                          # right again: the rock falls into (7,2)
+run(k, 12)
+check("kristal: rock falls into the dug cell", cell(7, 2) == 3 and cell(7, 1) == 0, f"(7,1)={cell(7,1)} (7,2)={cell(7,2)}")
+hold(k, 0x08, 6)                          # up to (8,1)
+hold(k, 0x01, 6 * 3)                      # right to the crystal at (11,1)
+check("kristal: crystal collected", peek(k, S, "gems") == 1 and peek(k, S, "score", size=2) == 10,
+      f"gems={peek(k, S, 'gems')} hero=({peek(k, S, 'hero_x')},{peek(k, S, 'hero_y')})")
+k.wr(S["_time_left"], 1); k.wr(S["_time_left"] + 1, 0)
+run(k, 200, shot="kristal_timeout.png")
+check("kristal: time out costs a life", peek(k, S, "lives") == 2, f"lives={peek(k, S, 'lives')}")
 
 # no cartridge
 k = run(Konsol(rom("boot.bin"), b""), 150)

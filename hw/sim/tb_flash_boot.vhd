@@ -17,6 +17,7 @@ architecture sim of tb_flash_boot is
 begin
   clk <= not clk after 20 ns when not done;
   dut : entity work.konsol_core
+    generic map (CART_ROM => "carttest_")
     port map (clk => clk, rst => rst, sw => x"0000", buttons => "10000", leds => open, rgb16 => open, rgb17 => open,
               digits => open, digit_blank => open, digit_dots => open,
               ps2_clk => '1', ps2_data => '1', nes_latch => open, nes_clk => open, nes_data => "1111",
