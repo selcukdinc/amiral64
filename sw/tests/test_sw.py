@@ -150,6 +150,30 @@ loops = (peek(k, S, "starx") - l0) & 255
 check("yildiz: game loop keeps up with 60 fps", loops >= 115, f"{loops} loops in 120 frames")
 k.pads[0] = 0
 
+k, S = load_game("fitil")
+check("fitil: fits in 20 KB", len(rom("game_fitil.bin")) <= 0x5000)
+run(k, 10, shot="fitil_setup.png")
+check("fitil: setup screen", "FITIL ARENASI" in screen_text(k) and "OYUNCU SAYISI" in screen_text(k))
+hold(k, 0x08, 2); hold(k, 0x08, 2)        # 4 players
+check("fitil: player count", peek(k, S, "nplayers") == 4, f"{peek(k, S, 'nplayers')}")
+hold(k, 0x04, 2)                          # back to 3
+hold(k, 0x10, 2)
+run(k, 5, shot="fitil_arena.png")
+check("fitil: 3-player round starts", peek(k, S, "nplayers") == 3 and peek(k, S, "alive_count") == 3,
+      f"n={peek(k, S, 'nplayers')} alive={peek(k, S, 'alive_count')}")
+G = lambda x, y: peek(k, S, "grid", y * 15 + x)
+hold(k, 0x80, 1)                          # P1 drops a bomb at (1,1) ...
+check("fitil: bomb placed", G(1, 1) == 3, f"{G(1,1)}")
+hold(k, 0x04, 40)                         # ... and walks down to (1,3)
+check("fitil: P1 walked to safety", (peek(k, S, "px"), peek(k, S, "py")) == (1, 3), f"({peek(k, S, 'px')},{peek(k, S, 'py')})")
+run(k, 130, shot="fitil_boom.png")
+check("fitil: bomb exploded, P1 survived", G(1, 1) == 0 and peek(k, S, "palive") == 1)
+# P2 and P3 blow themselves up: P1 wins the round
+k.pads[1] = 0x80; k.pads[2] = 0x80
+run(k, 2); k.pads[1] = 0; k.pads[2] = 0
+run(k, 240, shot="fitil_round.png")
+check("fitil: last player standing wins the round", peek(k, S, "pwins") == 1, f"wins={[peek(k, S, 'pwins', i) for i in range(4)]}")
+
 # no cartridge
 k = run(Konsol(rom("boot.bin"), b""), 150)
 check("missing cartridge message", "KARTUS BULUNAMADI" in screen_text(k), screen_text(k))
