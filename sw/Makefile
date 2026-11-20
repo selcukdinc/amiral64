@@ -31,8 +31,8 @@ $(B)/game_%.bin: $(B)/%/main.o $(LIBOBJ) game_c.cfg
 	$(LD65) -C game_c.cfg -o $@ -Ln $(B)/game_$*.lbl -m $(B)/game_$*.map $(LIBOBJ) $< $(NONELIB)
 
 # Games on the cartridge: NAME:players:binary
-CART_GAMES = "KRISTAL OCAK:1:$(B)/game_kristal.bin"
-CART_BINS = $(B)/game_kristal.bin
+CART_GAMES = "KRISTAL OCAK:1:$(B)/game_kristal.bin" "YILDIZ MUHAFIZI:1:$(B)/game_yildiz.bin"
+CART_BINS = $(B)/game_kristal.bin $(B)/game_yildiz.bin
 # test cartridge (menu tests, tb_boot): two tiny games that report on SYS_TEST
 TEST_GAMES = "TEST OYUN A:1:$(B)/gametest_A.bin" "TEST OYUN B:2-4:$(B)/gametest_B.bin"
 TEST_BINS = $(B)/gametest_A.bin $(B)/gametest_B.bin

@@ -126,6 +126,30 @@ k.wr(S["_time_left"], 1); k.wr(S["_time_left"] + 1, 0)
 run(k, 200, shot="kristal_timeout.png")
 check("kristal: time out costs a life", peek(k, S, "lives") == 2, f"lives={peek(k, S, 'lives')}")
 
+k, S = load_game("yildiz")
+check("yildiz: fits in 20 KB", len(rom("game_yildiz.bin")) <= 0x5000)
+run(k, 10, shot="yildiz_title.png")
+check("yildiz: title screen", "YILDIZ MUHAFIZI" in screen_text(k))
+hold(k, 0x80, 2)
+f0 = peek(k, S, "frame_count")
+loops0 = k.rd(S["_starx"]) if "_starx" in S else None
+# fly up and down firing for 20 seconds
+for t in range(20):
+    hold(k, 0x80 | (0x08 if t % 2 else 0x04), 28)
+run(k, 1, shot="yildiz_play.png")
+check("yildiz: enemies shot down", peek(k, S, "score", size=2) >= 40, f"score={peek(k, S, 'score', size=2)}")
+k.wr(S["_score"], 450 & 255); k.wr(S["_score"] + 1, 450 >> 8)
+run(k, 3)
+check("yildiz: waves advance with the score", peek(k, S, "wave", size=2) >= 3, f"wave={peek(k, S, 'wave', size=2)}")
+check("yildiz: sprites on screen", sum(1 for i in range(64) if k.ppu.vram[0x5200 + 4 * i] < 240) >= 2)
+# the game loop must keep up with 60 frames per second (starx counts main loop passes)
+k.pads[0] = 0x80
+l0 = peek(k, S, "starx")
+run(k, 120)
+loops = (peek(k, S, "starx") - l0) & 255
+check("yildiz: game loop keeps up with 60 fps", loops >= 115, f"{loops} loops in 120 frames")
+k.pads[0] = 0
+
 # no cartridge
 k = run(Konsol(rom("boot.bin"), b""), 150)
 check("missing cartridge message", "KARTUS BULUNAMADI" in screen_text(k), screen_text(k))
