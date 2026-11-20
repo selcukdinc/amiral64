@@ -53,6 +53,7 @@ add_files -fileset sim_1 sw/build/iotest.mem
 add_files -fileset sim_1 hw/sim/tb_boot.vhd
 add_files -fileset sim_1 hw/sim/spi_flash_model.vhd
 add_files -fileset sim_1 hw/sim/tb_flash_boot.vhd
+add_files -fileset sim_1 hw/sim/tb_game.vhd
 add_files -fileset sim_1 sw/build/cart_flash.mem
 add_files -fileset sim_1 sw/build/carttest_00.mem
 add_files -fileset sim_1 sw/build/carttest_01.mem
