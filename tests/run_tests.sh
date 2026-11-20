@@ -54,5 +54,23 @@ if [[ -z "$filter" || "$filter" == flow ]]; then
     echo "FAIL  VivadoMac flow (see $B/flow.log)"; grep -E "ERROR" "$B/flow.log" | head -5 | sed 's/^/      /'; fail=$((fail+1))
   fi
 fi
+if [[ -z "$filter" || "$filter" == vboard ]]; then
+  # the synthesized design on VivadoMac's virtual board (Verilator): keys through PS/2, a game starts and is played
+  [[ -x "$BIN" ]] || (cd "$ROOT" && swift build >/dev/null)
+  mkdir -p "$K/build/vboard"
+  (cd "$K/vivado" && "$BIN" -mode batch -source virtual_board_test.tcl) > "$B/vboard.log" 2>&1
+  if grep -q "LOADING" "$B/vboard.log" && python3 - "$K/build/vboard/game.ppm" <<'PY'
+import sys
+d = open(sys.argv[1], "rb").read().split(b"\n", 3)[3]
+px = lambda x, y: tuple(d[(y * 640 + x) * 3:(y * 640 + x) * 3 + 3])
+# Kristal Ocak: the hero dug from cell (1,1) to (6,1); cell (3,1) is now empty (black), (9,1) is still dirt
+sys.exit(0 if px(112, 80) == (0, 0, 0) and px(304, 80) != (0, 0, 0) else 1)
+PY
+  then
+    echo "PASS  virtual board: boot, menu by keyboard, Kristal Ocak played"; pass=$((pass+1))
+  else
+    echo "FAIL  virtual board (see $B/vboard.log)"; fail=$((fail+1))
+  fi
+fi
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]

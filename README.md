@@ -301,7 +301,15 @@ Sırayla dene ve her biri için ✓ ya da gördüğün farkı not al:
 
 ---
 
-## 11. Karta yüklemeden denemek (emülatör)
+## 11. Karta yüklemeden denemek
+
+**Sanal kart (asıl tasarım):** VivadoMac'te Flow Navigator > **Virtual Board**. Sentezlenen tasarımın kendisi
+Verilator ile Mac'te çalışır: VGA ekranı, LED'ler, 7-segment, switch'ler, butonlar ve UART ekranda; ekrana
+tıklayınca Mac klavyesi kartın USB klavyesi olur (sağ ⌘ = Sağ Ctrl). Gerçek hızın yaklaşık onda biriyle çalışır,
+yani oyunlar ağır çekimde akar ama donanımın doğru çalışıp çalışmadığı birebir görülür. İlk açılışta sentez ve
+derleme bir iki dakika sürer. `tests/run_tests.sh vboard` aynı şeyi pencere açmadan dener.
+
+**Emülatör (yalnızca yazılım, gerçek hızda):**
 
 Kart yokken oyunları Mac'te Python emülatörüyle çalıştırıp ekran görüntüsü alabilirsin:
 
