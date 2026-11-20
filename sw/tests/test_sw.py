@@ -174,6 +174,38 @@ run(k, 2); k.pads[1] = 0; k.pads[2] = 0
 run(k, 240, shot="fitil_round.png")
 check("fitil: last player standing wins the round", peek(k, S, "pwins") == 1, f"wins={[peek(k, S, 'pwins', i) for i in range(4)]}")
 
+k, S = load_game("olimpiyat")
+check("olimpiyat: fits in 20 KB", len(rom("game_olimpiyat.bin")) <= 0x5000)
+run(k, 10, shot="olimpiyat_title.png")
+check("olimpiyat: title screen", "MAHALLE OLIMPIYATI" in screen_text(k))
+hold(k, 0x10, 2)                          # 2 players (default)
+shots = {1: "olimpiyat_kosu.png", 2: "olimpiyat_atlama.png", 3: "olimpiyat_refleks.png"}
+taken = set()
+toggle = 0
+for f in range(20000):
+    ev = peek(k, S, "event_no")
+    if ev == 4:
+        break
+    txt = screen_text(k)
+    toggle ^= 1
+    if "DEVAM: A" in txt or "HAZIR: A" in txt:
+        k.pads[0] = 0x80 if toggle else 0
+    elif ev in (1, 2):
+        k.pads[0] = 0x80 if (f >> 1) & 1 else 0x40          # A, B, A, B ...
+        rx = peek(k, S, "runner_x", size=2)
+        if ev == 2 and 180 <= rx <= 199:
+            k.pads[0] |= 0x08                               # jump just before the line
+    elif ev == 3:
+        k.pads[0] = (0x80 if toggle else 0) if "SIMDI!" in txt else 0
+    if ev in shots and ev not in taken and f % 200 == 150:
+        run(k, 1, shot=shots[ev]); taken.add(ev)
+    else:
+        run(k, 1)
+pts = [peek(k, S, "points", i) for i in range(2)]
+check("olimpiyat: all three events played", peek(k, S, "event_no") == 4, f"event {peek(k, S, 'event_no')}")
+check("olimpiyat: points awarded (2 players, 3 events)", 21 <= sum(pts) <= 24, f"points={pts}")
+check("olimpiyat: champion screen", "SAMPIYON" in screen_text(k))
+
 # no cartridge
 k = run(Konsol(rom("boot.bin"), b""), 150)
 check("missing cartridge message", "KARTUS BULUNAMADI" in screen_text(k), screen_text(k))
