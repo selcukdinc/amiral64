@@ -60,6 +60,13 @@ check("game B drew its text", "TEST OYUN B CALISIYOR" in screen_text(k), screen_
 k = run(k, 200, pad={0: 0x30, 4: 0x00})
 check("Select+Start returns to the menu", "OYUN SEC" in screen_text(k), screen_text(k))
 
+# keyboard diagnostics in the menu: scan codes on the 7-segment display and the UART
+k = run(Konsol(rom("boot.bin"), cart), 140)
+k.kbd += [0x1D, 0xF0, 0x1D]
+k = run(k, 3)
+check("menu shows PS/2 codes", bytes(k.disp[0:3]) == bytes([0x1D, 0xF0, 0x1D]) and b"KB 1D" in bytes(k.uart_out),
+      f"{bytes(k.disp[0:4]).hex()} {bytes(k.uart_out)[-30:]}")
+
 # UART monitor: write a byte, dump it
 k = run(Konsol(rom("boot.bin"), cart), 5)
 k.uart_in += list(b"W 1234 5A\r") + list(b"D 1230\r")

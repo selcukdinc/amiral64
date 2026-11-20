@@ -325,6 +325,7 @@ check_dir:
 menu_loop:
         jsr wait_frame
         jsr monitor_poll
+        jsr kbd_show
         lda PAD1
         ora PAD2
         sta padnow
@@ -372,6 +373,36 @@ no_cart:
 @l:     jsr wait_frame
         jsr monitor_poll
         jmp @l
+
+; keyboard diagnostics: the last four PS/2 bytes on the 7-segment display (newest on the right),
+; also sent to the UART as "KB xx"
+kbd_show:
+@next:  lda KBD_STATUS
+        lsr a
+        bcc @done
+        lda SEG_DIGITS+2
+        sta SEG_DIGITS+3
+        lda SEG_DIGITS+1
+        sta SEG_DIGITS+2
+        lda SEG_DIGITS
+        sta SEG_DIGITS+1
+        lda KBD_DATA
+        sta SEG_DIGITS
+        pha
+        lda #'K'
+        jsr uart_putc
+        lda #'B'
+        jsr uart_putc
+        lda #' '
+        jsr uart_putc
+        pla
+        jsr put_hex
+        lda #13
+        jsr uart_putc
+        lda #10
+        jsr uart_putc
+        jmp @next
+@done:  rts
 
 click:  lda #$80
         ldx #$00
