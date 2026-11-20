@@ -92,5 +92,11 @@ set_property -dict { PACKAGE_PIN K17 IOSTANDARD LVCMOS33 } [get_ports { QSPI_DQ[
 set_property -dict { PACKAGE_PIN K18 IOSTANDARD LVCMOS33 } [get_ports { QSPI_DQ[1] }]
 set_property -dict { PACKAGE_PIN L14 IOSTANDARD LVCMOS33 } [get_ports { QSPI_DQ[2] }]
 set_property -dict { PACKAGE_PIN M14 IOSTANDARD LVCMOS33 } [get_ports { QSPI_DQ[3] }]
-# PS/2 and the NES controller data lines idle high
-set_property PULLUP true [get_ports { PS2_CLK PS2_DATA NES_DATA[*] }]
+# PS/2 (open collector from the PIC24 USB host) and the NES data lines need pull-ups: without them
+# PS2_CLK floats low, which a PS/2 device reads as "host inhibit" and stops sending.
+set_property PULLUP true [get_ports { PS2_CLK }]
+set_property PULLUP true [get_ports { PS2_DATA }]
+set_property PULLUP true [get_ports { NES_DATA[0] }]
+set_property PULLUP true [get_ports { NES_DATA[1] }]
+set_property PULLUP true [get_ports { NES_DATA[2] }]
+set_property PULLUP true [get_ports { NES_DATA[3] }]

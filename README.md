@@ -295,7 +295,8 @@ Sırayla dene ve her biri için ✓ ya da gördüğün farkı not al:
 | Görüntü kaymış, titriyor | Monitörün otomatik ayarını kullan; çözünürlük 640x480 @ 60 Hz |
 | Menüde `KARTUS BULUNAMADI` | `make -C sw` çalıştırılmadan bitstream üretilmiş olabilir. `make -C sw`, sonra yeniden Generate Bitstream |
 | Ses yok | Kulaklığı kartın ses jakına tak, sesi biraz aç. Açılış melodisi her resetten sonra çalar |
-| Klavye çalışmıyor | Klavyeyi **USB HOST** portuna doğrudan tak (hub olmaz); kartı yeniden aç |
+| Klavye çalışmıyor, BUSY (sarı) LED yanıp sönüyor | PS/2 hatlarında FPGA'nın pull-up'ları yoksa PIC24 tuşları gönderemez. 20 Kasım'dan önceki bitstream'lerde bu eksikti: VivadoMac'i ve bitstream'i yeniden üret. Klavyeyi **USB HOST** portuna doğrudan tak (hub olmaz) |
+| Klavye hâlâ çalışmıyor | Serial Terminal'de W'ye basılı tutarken `D 8210` yaz: dördüncü bayt `20` olmalı. Hep `00` ise tuş FPGA'ya ulaşmıyor; başka (sade, multimedya tuşsuz) bir USB klavye dene |
 | Flash'tan açılmıyor | JP1 QSPI'de mi? 8. bölümdeki iki yazma işlemi de `verified` ile bitti mi? |
 
 ---
