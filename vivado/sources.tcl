@@ -8,6 +8,7 @@ add_files hw/konsol_pkg.vhd
 add_files hw/bram.vhd
 add_files hw/bram_dp.vhd
 add_files hw/bram_banked.vhd
+add_files hw/spi_flash_reader.vhd
 add_files hw/ppu.vhd
 add_files hw/display_io.vhd
 add_files hw/ps2_rx.vhd
@@ -50,4 +51,7 @@ add_files -fileset sim_1 hw/sim/tb_apu.vhd
 add_files -fileset sim_1 hw/sim/tb_uart_cpu.vhd
 add_files -fileset sim_1 sw/build/iotest.mem
 add_files -fileset sim_1 hw/sim/tb_boot.vhd
+add_files -fileset sim_1 hw/sim/spi_flash_model.vhd
+add_files -fileset sim_1 hw/sim/tb_flash_boot.vhd
+add_files -fileset sim_1 sw/build/cart_flash.mem
 add_files -fileset sim_1 sw/build/cputest.mem

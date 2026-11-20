@@ -236,7 +236,21 @@ logo:   lda #15
 
 ; ---------------------------------------------------------------- menu
 menu:   jsr clear_screen
-        ; read the cartridge header and directory
+        ; the cartridge in the QSPI flash wins over the one built into the bitstream (BRAM)
+        lda #1
+        jsr read_dir
+        lda dir
+        cmp #'K'
+        bne @bram
+        lda dir+1
+        cmp #'6'
+        beq @check
+@bram:  lda #0
+        jsr read_dir
+@check: jmp check_dir
+
+read_dir:                       ; A = source (1 flash, 0 BRAM): header + directory into dir
+        sta CART_SRC
         lda #0
         sta CART_ADDR_L
         sta CART_ADDR_M
@@ -251,6 +265,9 @@ menu:   jsr clear_screen
         inx
         cpx #16
         bne @rd2
+        rts
+
+check_dir:
         lda dir
         cmp #'K'
         bne @bad
@@ -291,6 +308,17 @@ menu:   jsr clear_screen
         lda #<msg_help
         ldx #>msg_help
         jsr print
+        lda #33                 ; where the games come from
+        sta col
+        lda #28
+        sta row
+        lda #<msg_bram
+        ldx #>msg_bram
+        ldy CART_SRC
+        beq @src
+        lda #<msg_flash
+        ldx #>msg_flash
+@src:   jsr print
         lda #0
         sta cursor
         jsr draw_cursor
@@ -706,6 +734,8 @@ msg_sub:    .byte "6502 . NEXYS 4 DDR", 0
 msg_pick:   .byte "OYUN SEC", 0
 msg_help:   .byte "YUKARI/ASAGI SEC  A/START OYNA", 0
 msg_nocart: .byte "KARTUS BULUNAMADI", 0
+msg_bram:   .byte "BRAM", 0
+msg_flash:  .byte "FLASH", 0
 msg_hello:  .byte 13, 10, "RETRO KONSOL BOOT ROM", 13, 10
 msg_prompt: .byte "K65> ", 0
 msg_load:   .byte 13, 10, "LOADING", 13, 10, 0

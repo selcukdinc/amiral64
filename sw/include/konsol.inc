@@ -58,6 +58,7 @@ CART_ADDR_M  = $8711
 CART_ADDR_H  = $8712
 CART_DATA    = $8713   ; read: byte at CART_ADDR, then CART_ADDR + 1
 CART_STATUS  = $8714   ; bit0 data ready
+CART_SRC     = $8715   ; bit0: 0 = BRAM cartridge, 1 = QSPI flash (from flash offset $400000)
 
 ; RAM conventions shared by the boot ROM and the games
 NMI_VEC      = $0200   ; the boot ROM's NMI/IRQ handlers jump through these (JMP (NMI_VEC))

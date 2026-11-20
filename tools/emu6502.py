@@ -15,11 +15,13 @@ CYCLES_PER_FRAME = 6_250_000 // 60     # 6.25 MHz CPU, 60 Hz frames
 LINES = 262                            # logical timing: 240 visible + vblank, for LINE/raster IRQ
 
 class Konsol:
-    def __init__(self, rom, cart=b""):
+    def __init__(self, rom, cart=b"", flash=b""):
         self.ram = bytearray(0x8000)
         self.game = bytearray(0x5000)
         self.rom = bytearray(rom.ljust(0x2000, b"\xff")[:0x2000])
         self.cart = bytearray(cart)
+        self.flash = bytearray(flash)     # flash cartridge (bytes from flash offset $400000)
+        self.cart_src = 0
         self.ppu = PPU()
         self.vaddr = 0
         self.read_buf = 0
@@ -124,10 +126,12 @@ class Konsol:
             if r == 0x01: return 1
             if r == 0x02: return self.slow
             if r == 0x13:
-                v = self.cart[self.cart_addr] if self.cart_addr < len(self.cart) else 0xFF
+                src = self.flash if self.cart_src else self.cart
+                v = src[self.cart_addr] if self.cart_addr < len(src) else 0xFF
                 self.cart_addr += 1
                 return v
             if r == 0x14: return 1
+            if r == 0x15: return self.cart_src
             if r == 0xFF: return self.test or 0
             return 0
         return 0
@@ -175,6 +179,7 @@ class Konsol:
             elif r == 0x10: self.cart_addr = (self.cart_addr & 0xFFFF00) | v
             elif r == 0x11: self.cart_addr = (self.cart_addr & 0xFF00FF) | v << 8
             elif r == 0x12: self.cart_addr = (self.cart_addr & 0x00FFFF) | v << 16
+            elif r == 0x15: self.cart_src = v & 1
             elif r == 0xFF:
                 self.test = v
                 self.test_log.append(v)

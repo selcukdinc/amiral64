@@ -3,6 +3,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use work.xilinx_prims.all;
 
 entity konsol_top is
   port (
@@ -35,6 +36,7 @@ architecture rtl of konsol_top is
   signal digits : std_logic_vector(31 downto 0);
   signal blank, dots : std_logic_vector(7 downto 0);
   signal rgb16, rgb17 : std_logic_vector(2 downto 0);
+  signal f_sck : std_logic;
 begin
   clocks : entity work.clock_reset port map (clk100 => CLK100MHZ, cpu_resetn => CPU_RESETN, clk => clk, rst => rst);
 
@@ -43,6 +45,7 @@ begin
               rgb16 => rgb16, rgb17 => rgb17, digits => digits, digit_blank => blank, digit_dots => dots,
               ps2_clk => PS2_CLK, ps2_data => PS2_DATA, nes_latch => NES_LATCH, nes_clk => NES_CLK, nes_data => NES_DATA,
               uart_txd => UART_RXD_OUT, uart_rxd => UART_TXD_IN, aud_pwm => AUD_PWM, aud_sd => AUD_SD,
+              flash_sck => f_sck, flash_cs_n => QSPI_CSN, flash_mosi => QSPI_DQ(0), flash_miso => QSPI_DQ(1),
               vga_rgb => rgb, vga_hs => VGA_HS, vga_vs => VGA_VS, dbg_test_we => open, dbg_test_code => open, dbg_addr => open, dbg_cpu_en => open);
 
   display : entity work.seg7
@@ -54,6 +57,11 @@ begin
 
   LED16_R <= rgb16(2); LED16_G <= rgb16(1); LED16_B <= rgb16(0);
   LED17_R <= rgb17(2); LED17_G <= rgb17(1); LED17_B <= rgb17(0);
-  QSPI_CSN <= '1';
-  QSPI_DQ <= (others => 'Z');
+  -- the flash clock is the configuration clock pin (CCLK), reachable only through STARTUPE2
+  startup : STARTUPE2
+    port map (CFGCLK => open, CFGMCLK => open, EOS => open, PREQ => open, CLK => '0', GSR => '0', GTS => '0',
+              KEYCLEARB => '1', PACK => '0', USRCCLKO => f_sck, USRCCLKTS => '0', USRDONEO => '1', USRDONETS => '1');
+  QSPI_DQ(1) <= 'Z';      -- MISO
+  QSPI_DQ(2) <= '1';      -- WP#
+  QSPI_DQ(3) <= '1';      -- HOLD#
 end architecture;

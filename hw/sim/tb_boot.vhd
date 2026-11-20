@@ -20,7 +20,7 @@ begin
     port map (clk => clk, rst => rst, sw => x"0000", buttons => "10000", leds => open, rgb16 => open, rgb17 => open,
               digits => open, digit_blank => open, digit_dots => open,
               ps2_clk => '1', ps2_data => '1', nes_latch => open, nes_clk => open, nes_data => "1111",
-              uart_txd => txd, uart_rxd => '1', aud_pwm => open, aud_sd => open, vga_rgb => open, vga_hs => open, vga_vs => open,
+              uart_txd => txd, uart_rxd => '1', aud_pwm => open, aud_sd => open, flash_sck => open, flash_cs_n => open, flash_mosi => open, flash_miso => '1', vga_rgb => open, vga_hs => open, vga_vs => open,
               dbg_test_we => test_we, dbg_test_code => code, dbg_addr => open, dbg_cpu_en => open);
   process
   begin

@@ -67,6 +67,13 @@ k = run(k, 20)
 out = bytes(k.uart_out)
 check("monitor W/D", k.ram[0x1234] == 0x5A and b"1230: 00 00 00 00 5A" in out, out[-120:])
 
+# a cartridge in the flash wins over the BRAM one
+k = run(Konsol(rom("boot.bin"), cart, flash=cart.replace(b"TEST OYUN A", b"FLASH OYUN A")), 150)
+txt = screen_text(k)
+check("flash cartridge preferred", "FLASH OYUN A" in txt and "FLASH" in txt, txt)
+k = run(Konsol(rom("boot.bin"), cart), 150)
+check("BRAM cartridge when the flash is empty", "TEST OYUN A" in screen_text(k) and "BRAM" in screen_text(k))
+
 # no cartridge
 k = run(Konsol(rom("boot.bin"), b""), 150)
 check("missing cartridge message", "KARTUS BULUNAMADI" in screen_text(k), screen_text(k))
