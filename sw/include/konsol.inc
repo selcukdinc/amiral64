@@ -51,3 +51,16 @@ SYS_ID       = $8700   ; "K"
 SYS_VERSION  = $8701
 SYS_SPEED    = $8702   ; bit0 1 = 1.79 MHz
 SYS_TEST     = $87FF   ; simulation: test result ($01 = pass)
+
+; Cartridge port ($8710)
+CART_ADDR_L  = $8710
+CART_ADDR_M  = $8711
+CART_ADDR_H  = $8712
+CART_DATA    = $8713   ; read: byte at CART_ADDR, then CART_ADDR + 1
+CART_STATUS  = $8714   ; bit0 data ready
+
+; RAM conventions shared by the boot ROM and the games
+NMI_VEC      = $0200   ; the boot ROM's NMI/IRQ handlers jump through these (JMP (NMI_VEC))
+IRQ_VEC      = $0202
+OAM_SHADOW   = $0300   ; 256-byte sprite table copied by OAM DMA
+GAME_START   = $9000

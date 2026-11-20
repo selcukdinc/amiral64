@@ -6,7 +6,11 @@ use ieee.numeric_std.all;
 use work.konsol_pkg.all;
 
 entity konsol_core is
-  generic (BOOT_ROM : string := "boot.mem");
+  generic (
+    BOOT_ROM  : string := "boot.mem";
+    CART_ROM  : string := "cart_";      -- cartridge image banks cart_00.mem .. (tools/mkcart.py)
+    CART_BANKS : integer := 16          -- 16 x 4 KB = 64 KB
+  );
   port (
     clk, rst   : in  std_logic;
     -- board I/O
@@ -69,6 +73,9 @@ architecture rtl of konsol_core is
   signal u_busy, u_avail, u_ovr : std_logic;
   signal u_rxd : std_logic_vector(7 downto 0);
   signal apu_q : std_logic_vector(7 downto 0);
+  -- cartridge port: $8710-$8712 address, $8713 data (read, then address + 1), $8714 bit0 data ready
+  signal cart_addr : unsigned(23 downto 0) := (others => '0');
+  signal cart_q : std_logic_vector(7 downto 0);
 begin
   -- CPU clock enable: one CPU cycle every CPU_DIV_FAST (or CPU_DIV_SLOW) system clocks. Block RAM reads
   -- take one clock, so the data for the address the CPU put out is ready long before the next enable.
@@ -186,7 +193,11 @@ begin
               rx_avail => u_avail, rx_data => u_rxd, rx_overrun => u_ovr);
   uart_q <= u_rxd when a(3 downto 0) = x"0" else "00000" & u_ovr & u_busy & u_avail;
 
-  -- System page: $8700 id "K", $8701 version, $8702 CPU speed (bit0: 1 = slow 1.79 MHz), $87FF test result
+  cart : entity work.bram_banked generic map (BANKS => CART_BANKS, INIT_PREFIX => CART_ROM)
+    port map (clk => clk, addr => std_logic_vector(cart_addr), rdata => cart_q);
+
+  -- System page: $8700 id "K", $8701 version, $8702 CPU speed (bit0: 1 = slow 1.79 MHz), $87FF test result,
+  -- $8710-$8714 cartridge port
   process (clk)
   begin
     if rising_edge(clk) then
@@ -194,12 +205,18 @@ begin
       if io_we(IO_SYS) = '1' then
         if a(7 downto 0) = x"02" then slow <= cpu_do(0); end if;
         if a(7 downto 0) = x"FF" then test_code <= cpu_do; dbg_test_we <= '1'; end if;
+        if a(7 downto 0) = x"10" then cart_addr(7 downto 0) <= unsigned(cpu_do); end if;
+        if a(7 downto 0) = x"11" then cart_addr(15 downto 8) <= unsigned(cpu_do); end if;
+        if a(7 downto 0) = x"12" then cart_addr(23 downto 16) <= unsigned(cpu_do); end if;
       end if;
+      if io_re(IO_SYS) = '1' and a(7 downto 0) = x"13" then cart_addr <= cart_addr + 1; end if;
       if rst = '1' then slow <= '0'; end if;
     end if;
   end process;
   with a(7 downto 0) select sys_q <=
-    x"4B" when x"00", KONSOL_VERSION when x"01", "0000000" & slow when x"02", test_code when x"FF", x"00" when others;
+    x"4B" when x"00", KONSOL_VERSION when x"01", "0000000" & slow when x"02", test_code when x"FF",
+    std_logic_vector(cart_addr(7 downto 0)) when x"10", std_logic_vector(cart_addr(15 downto 8)) when x"11",
+    std_logic_vector(cart_addr(23 downto 16)) when x"12", cart_q when x"13", x"01" when x"14", x"00" when others;
 
   with io_page select io_q <=
     ppu_q when IO_PPU, apu_q when IO_APU, input_q when IO_INPUT, uart_q when IO_UART, timer_q when IO_TIMER, disp_q when IO_DISP, sys_q when IO_SYS, x"00" when others;

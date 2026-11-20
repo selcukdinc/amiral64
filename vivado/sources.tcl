@@ -7,6 +7,7 @@ add_files hw/t65/T65.vhd
 add_files hw/konsol_pkg.vhd
 add_files hw/bram.vhd
 add_files hw/bram_dp.vhd
+add_files hw/bram_banked.vhd
 add_files hw/ppu.vhd
 add_files hw/display_io.vhd
 add_files hw/ps2_rx.vhd
@@ -20,6 +21,22 @@ add_files hw/seg7.vhd
 add_files hw/konsol_core.vhd
 add_files hw/konsol_top.vhd
 add_files sw/build/boot.mem
+add_files sw/build/cart_00.mem
+add_files sw/build/cart_01.mem
+add_files sw/build/cart_02.mem
+add_files sw/build/cart_03.mem
+add_files sw/build/cart_04.mem
+add_files sw/build/cart_05.mem
+add_files sw/build/cart_06.mem
+add_files sw/build/cart_07.mem
+add_files sw/build/cart_08.mem
+add_files sw/build/cart_09.mem
+add_files sw/build/cart_0a.mem
+add_files sw/build/cart_0b.mem
+add_files sw/build/cart_0c.mem
+add_files sw/build/cart_0d.mem
+add_files sw/build/cart_0e.mem
+add_files sw/build/cart_0f.mem
 add_files -fileset constrs_1 constr/nexys4ddr.xdc
 add_files -fileset sim_1 hw/sim/xilinx_prims_sim.vhd
 add_files -fileset sim_1 hw/sim/tb_vga_timing.vhd
@@ -32,4 +49,5 @@ add_files -fileset sim_1 hw/sim/tb_input.vhd
 add_files -fileset sim_1 hw/sim/tb_apu.vhd
 add_files -fileset sim_1 hw/sim/tb_uart_cpu.vhd
 add_files -fileset sim_1 sw/build/iotest.mem
+add_files -fileset sim_1 hw/sim/tb_boot.vhd
 add_files -fileset sim_1 sw/build/cputest.mem
