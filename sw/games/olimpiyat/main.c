@@ -16,7 +16,7 @@ unsigned char last_btn, cur;
 int runner_x;
 static const unsigned signal_col = 0xC00;   /* the backdrop flashes red on the signal */
 
-static unsigned char pressed(void) { return pad_new[0] | pad_new[cur]; }
+static unsigned char pressed(void) { return pad_new[0] | pad_new[1] | pad_new[cur]; }
 
 static void wait_frames(unsigned char n) { while (n--) k_wait_frame(); }
 
@@ -218,10 +218,10 @@ void main(void) {
         for (;;) {
             k_print_num(25, 16, nplayers, 1, 1);
             k_wait_frame();
-            if (((pad[0]) & (BTN_SELECT | BTN_START)) == (BTN_SELECT | BTN_START)) k_menu();
-            if (pad_new[0] & BTN_UP && nplayers < 4) ++nplayers;
-            if (pad_new[0] & BTN_DOWN && nplayers > 1) --nplayers;
-            if (pad_new[0] & (BTN_START | BTN_A)) break;
+            if (((pad[0] | pad[1]) & (BTN_SELECT | BTN_START)) == (BTN_SELECT | BTN_START)) k_menu();
+            if ((pad_new[0] | pad_new[1]) & BTN_UP && nplayers < 4) ++nplayers;
+            if ((pad_new[0] | pad_new[1]) & BTN_DOWN && nplayers > 1) --nplayers;
+            if ((pad_new[0] | pad_new[1]) & (BTN_START | BTN_A)) break;
         }
         k_seed(0x0A11 + frame_count);
         for (i = 0; i < 4; ++i) points[i] = 0;

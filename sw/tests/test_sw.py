@@ -111,24 +111,34 @@ k, S = load_game("kristal")
 check("kristal: fits in 20 KB", len(rom("game_kristal.bin")) <= 0x5000)
 run(k, 10, shot="kristal_title.png")
 check("kristal: title screen", "KRISTAL OCAK" in screen_text(k))
-hold(k, 0x80, 2)
+k.pads[1] = 0x10                          # Enter = keyboard player 2 Start
+run(k, 3); k.pads[1] = 0; run(k, 2)
 run(k, 10, shot="kristal_level1.png")
 check("kristal: level 1 drawn", "KRISTAL 00/10" in screen_text(k), screen_text(k))
 W = 32
 cell = lambda x, y: peek(k, S, "map", y * W + x) & 15
 check("kristal: hero starts at (1,1)", peek(k, S, "hero_x") == 1 and peek(k, S, "hero_y") == 1)
-hold(k, 0x01, 6 * 5)                     # right x5
-check("kristal: walks right through dirt", peek(k, S, "hero_x") == 6 and cell(5, 1) == 0,
-      f"x={peek(k, S, 'hero_x')}")
-hold(k, 0x04, 6)                          # down
-hold(k, 0x01, 6)                          # right: under the rock at (7,1)
-hold(k, 0x01, 6)                          # right again: the rock falls into (7,2)
+def walk(mask, until, limit=120):
+    """hold a direction until the hero reaches a cell (the game moves once per 6-frame step)"""
+    k.pads[0] = mask
+    for _ in range(limit):
+        if until(): break
+        run(k, 1)
+    k.pads[0] = 0
+    run(k, 2)
+hx = lambda: peek(k, S, "hero_x")
+hy = lambda: peek(k, S, "hero_y")
+walk(0x01, lambda: hx() == 6)
+check("kristal: walks right through dirt", hx() == 6 and cell(5, 1) == 0, f"x={hx()}")
+walk(0x04, lambda: hy() == 2)                 # down
+walk(0x01, lambda: hx() == 7)                 # right: under the rock at (7,1)
+walk(0x01, lambda: hx() == 8)                 # right again: the rock falls into (7,2)
 run(k, 12)
 check("kristal: rock falls into the dug cell", cell(7, 2) == 3 and cell(7, 1) == 0, f"(7,1)={cell(7,1)} (7,2)={cell(7,2)}")
-hold(k, 0x08, 6)                          # up to (8,1)
-hold(k, 0x01, 6 * 3)                      # right to the crystal at (11,1)
+walk(0x08, lambda: hy() == 1)                 # up to (8,1)
+walk(0x01, lambda: hx() == 11)                # right to the crystal at (11,1)
 check("kristal: crystal collected", peek(k, S, "gems") == 1 and peek(k, S, "score", size=2) == 10,
-      f"gems={peek(k, S, 'gems')} hero=({peek(k, S, 'hero_x')},{peek(k, S, 'hero_y')})")
+      f"gems={peek(k, S, 'gems')} hero=({hx()},{hy()})")
 k.wr(S["_time_left"], 1); k.wr(S["_time_left"] + 1, 0)
 run(k, 200, shot="kristal_timeout.png")
 check("kristal: time out costs a life", peek(k, S, "lives") == 2, f"lives={peek(k, S, 'lives')}")

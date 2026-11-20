@@ -178,7 +178,8 @@ static void move_hero(signed char dx, signed char dy) {
 }
 
 static void wait_start(void) {
-    do { k_wait_frame(); } while (!(pad_new[0] & (BTN_START | BTN_A)));
+    /* both keyboard players (Space or Enter) and pads 1-2 can start */
+    do { k_wait_frame(); } while (!((pad_new[0] | pad_new[1]) & (BTN_START | BTN_A)));
 }
 
 static void title(void) {
