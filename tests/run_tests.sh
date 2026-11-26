@@ -6,9 +6,9 @@
 # The design and testbench file lists come from vivado/sources.tcl, the same list VivadoMac uses.
 set -u
 K="$(cd "$(dirname "$0")/.." && pwd)"
-ROOT="$(cd "$K/.." && pwd)"
 GHDL="${GHDL:-$HOME/.vivadomac/oss-cad-suite/bin/ghdl}"
-BIN="${VIVADOMAC_BIN:-$ROOT/.build/debug/VivadoMac}"
+# VivadoMac is a separate project: point VIVADOMAC_BIN at its binary if it is not in /Applications
+BIN="${VIVADOMAC_BIN:-/Applications/VivadoMac.app/Contents/MacOS/VivadoMac}"
 B="$K/build/tests"; mkdir -p "$B"
 filter="${1:-}"
 pass=0; fail=0
@@ -44,7 +44,7 @@ for tb in ${(f)"$(for f in $simsrc; do sed -n 's/^entity \(tb_[a-z0-9_]*\) is.*/
 done
 
 if [[ -z "$filter" || "$filter" == flow ]]; then
-  [[ -x "$BIN" ]] || (cd "$ROOT" && swift build >/dev/null)
+  [[ -x "$BIN" ]] || { echo "VivadoMac not found at $BIN (set VIVADOMAC_BIN)"; exit 1; }
   rm -rf "$K/build/flow"
   if (cd "$K/vivado" && "$BIN" -mode batch -source build_bitstream.tcl) > "$B/flow.log" 2>&1 \
      && grep -q "Bitgen Completed Successfully" "$B/flow.log"; then
@@ -56,7 +56,7 @@ if [[ -z "$filter" || "$filter" == flow ]]; then
 fi
 if [[ -z "$filter" || "$filter" == vboard ]]; then
   # the synthesized design on VivadoMac's virtual board (Verilator): keys through PS/2, a game starts and is played
-  [[ -x "$BIN" ]] || (cd "$ROOT" && swift build >/dev/null)
+  [[ -x "$BIN" ]] || { echo "VivadoMac not found at $BIN (set VIVADOMAC_BIN)"; exit 1; }
   mkdir -p "$K/build/vboard"
   (cd "$K/vivado" && "$BIN" -mode batch -source virtual_board_test.tcl) > "$B/vboard.log" 2>&1
   if grep -q "LOADING" "$B/vboard.log" && python3 - "$K/build/vboard/game.ppm" <<'PY'

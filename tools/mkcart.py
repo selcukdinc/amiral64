@@ -13,7 +13,6 @@ The image is padded with $FF to 128 KB (the BRAM cartridge, 32 x 4 KB banks writ
 <out>_00.mem ...; the same bytes go to the QSPI flash).
 """
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../Scripts"))
 
 SIZE = 128 * 1024         # BRAM cartridge: 32 banks of 4 KB
 GAME_MAX = {0x9000: 0x5000, 0x0400: 0x7800}

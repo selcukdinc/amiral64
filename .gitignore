@@ -1,0 +1,5 @@
+build/
+sw/build/
+vivado/konsol/
+__pycache__/
+.DS_Store

@@ -3,7 +3,7 @@
 # the software tests.
 CA65 ?= ca65
 LD65 ?= ld65
-BIN2MEM = ../../Scripts/bin2mem.py
+BIN2MEM = ../tools/bin2mem.py
 B = build
 
 ROMS = $(B)/boot.mem $(B)/cputest.mem $(B)/ppucpu.mem $(B)/iotest.mem $(B)/cart.mem $(B)/carttest.mem $(B)/cart_flash.mem

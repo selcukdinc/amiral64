@@ -28,15 +28,16 @@ karşısına ne çıkacağını anlatıyor.
 
 **Yazılım (Mac)**
 
-- VivadoMac (bu deponun kökünde `./Scripts/build_app.sh` ile `build/VivadoMac.app` oluşur).
-- cc65: `brew install cc65` (6502 derleyicisi; `Scripts/install_toolchain.sh` de kuruyor).
+- VivadoMac (ayrı bir proje; uygulamayı `/Applications` altına koy ya da testler için `VIVADOMAC_BIN`'i
+  `VivadoMac.app/Contents/MacOS/VivadoMac` yoluna ayarla).
+- cc65: `brew install cc65` (6502 derleyicisi; VivadoMac'in `Scripts/install_toolchain.sh` betiği de kuruyor).
 - Python 3 (macOS'ta zaten var).
 
 ---
 
 ## 2. Projeyi derlemek
 
-Terminalde `retro-konsol` klasöründe:
+Terminalde `amiral64` klasöründe:
 
 ```sh
 make -C sw
@@ -50,7 +51,7 @@ Sonra VivadoMac projesini oluştur:
 
 ```sh
 cd vivado
-../../build/VivadoMac.app/Contents/MacOS/VivadoMac -mode batch -source create_project.tcl
+/Applications/VivadoMac.app/Contents/MacOS/VivadoMac -mode batch -source create_project.tcl
 ```
 
 Çıktının sonunda `# Batch run finished` yazar ve `vivado/konsol/konsol.xpr` oluşur.
@@ -316,7 +317,7 @@ Bu adım isteğe bağlı. Yapılınca kart, bilgisayara bağlı olmadan da açı
 
 1. **Program Device**'ı aç, bitstream yolu aynı kalsın.
 2. **Program configuration memory (SPI flash)** kutusunu işaretle. Altında iki alan açılır:
-   - **Data file**: `retro-konsol/sw/build/cart.bin`
+   - **Data file**: `amiral64/sw/build/cart.bin`
    - **Flash offset**: `0x400000` (varsayılan değer)
 3. **Program** de. Önce bitstream flash'a yazılır ve doğrulanır, sonra kartuş verisi; toplam 30–60 saniye.
    Messages'ta `Configuration memory programmed and verified` ve `cart.bin written to flash at 0x400000 and
