@@ -190,7 +190,7 @@ static void title(void) {
     k_print(6, 10, "KAZ, KRISTALLERI TOPLA,", 0);
     k_print(6, 12, "KAYALARA DIKKAT ET VE", 0);
     k_print(6, 14, "KAPIDAN CIK.", 0);
-    k_print(9, 20, "A / START ILE BASLA", 2);
+    k_print(9, 20, "SPACE/ENTER: BASLA ", 2);
     wait_start();
 }
 
@@ -251,7 +251,7 @@ void main(void) {
                 if (lives) load_level();
             }
         }
-        k_print(12, 1, "START: TEKRAR", 0);
+        k_print(12, 1, "SPACE: TEKRAR", 0);
         wait_start();
     }
 }

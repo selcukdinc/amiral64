@@ -6,7 +6,13 @@
 --   $8210-$822F key table: bit k of byte $8210 + k/8 = key k is down (scan code set 2; E0 keys at code+$80)
 -- NES/SNES pads on Pmod JA are read once per frame (LATCH, then 8 CLK pulses; DATA is active low).
 -- Keyboard players: P1 = W A S D, A = Left Shift, B = Left Ctrl, Select = Tab, Start = Space;
---                   P2 = arrows, A = Right Ctrl, B = Right Shift, Select = Backspace, Start = Enter.
+--                   P2 = arrows, A = Right Shift, B = Right Ctrl, Select = Backspace, Start = Enter
+--                   (so on the keyboard Shift is always A and Ctrl is always B).
+-- The Nexys 4 DDR's PIC24 firmware sends Left/Up/Down arrows without their E0 prefix (6B, 75, 72; only Right
+-- arrow arrives as E0 74), so player 2's directions accept both forms (the plain codes are keypad 4 8 2 6 too),
+-- and the release of either form clears both. A lone E0/F0 prefix expires after 10 ms instead of shifting the
+-- next key to the wrong table entry (which left keys stuck down), and the keyboard's self-test byte AA (sent
+-- when it is plugged in or reset) clears the whole table.
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -38,6 +44,8 @@ architecture rtl of input_io is
   signal count : integer range 0 to 16 := 0;
   signal ovr : std_logic := '0';
   signal pop : std_logic;
+  constant PFX_TIMEOUT : integer := CLK_HZ / 100;          -- 10 ms
+  signal pfx_t : integer range 0 to PFX_TIMEOUT := 0;
 
   -- NES reader: 6 us half periods
   constant HALF : integer := CLK_HZ / 166_667;
@@ -70,15 +78,30 @@ begin
           ovr <= '1';
         end if;
         -- key table
+        pfx_t <= 0;
         if kc = x"E0" then
           ext <= '1';
         elsif kc = x"F0" then
           brk <= '1';
+        elsif kc = x"AA" then
+          keys <= (others => '0');      -- keyboard self-test passed: (re)plugged, nothing is held
+          ext <= '0'; brk <= '0';
         else
           idx := to_integer(unsigned(kc(6 downto 0)));
           if ext = '1' or kc(7) = '1' then idx := idx + 128; end if;
           keys(idx) <= not brk;
+          -- arrows: a release clears the E0 and the plain entry (the PIC24 mixes the two forms)
+          if brk = '1' and (kc = x"6B" or kc = x"72" or kc = x"74" or kc = x"75") then
+            keys(to_integer(unsigned(kc(6 downto 0)))) <= '0';
+            keys(128 + to_integer(unsigned(kc(6 downto 0)))) <= '0';
+          end if;
           ext <= '0'; brk <= '0';
+        end if;
+      elsif ext = '1' or brk = '1' then
+        if pfx_t = PFX_TIMEOUT then
+          ext <= '0'; brk <= '0'; pfx_t <= 0;
+        else
+          pfx_t <= pfx_t + 1;
         end if;
       end if;
       if pop = '1' and count > 0 then rp <= rp + 1; end if;
@@ -90,7 +113,7 @@ begin
       if re = '1' and addr = "000101" then ovr <= '0'; end if;
       if frame_tick = '1' then btn_q <= buttons; end if;
       if rst = '1' then
-        keys <= (others => '0'); ext <= '0'; brk <= '0'; wp <= (others => '0'); rp <= (others => '0'); count <= 0; ovr <= '0';
+        keys <= (others => '0'); ext <= '0'; brk <= '0'; pfx_t <= 0; wp <= (others => '0'); rp <= (others => '0'); count <= 0; ovr <= '0';
       end if;
     end if;
   end process;
@@ -126,8 +149,9 @@ begin
   -- keyboard players (bit order A B Sel Start Up Down Left Right)
   kp1 <= k(keys, 16#12#) & k(keys, 16#14#) & k(keys, 16#0D#) & k(keys, 16#29#)
        & k(keys, 16#1D#) & k(keys, 16#1B#) & k(keys, 16#1C#) & k(keys, 16#23#);
-  kp2 <= k(keys, 128 + 16#14#) & k(keys, 16#59#) & k(keys, 16#66#) & k(keys, 16#5A#)
-       & k(keys, 128 + 16#75#) & k(keys, 128 + 16#72#) & k(keys, 128 + 16#6B#) & k(keys, 128 + 16#74#);
+  kp2 <= k(keys, 16#59#) & k(keys, 128 + 16#14#) & k(keys, 16#66#) & k(keys, 16#5A#)
+       & (k(keys, 128 + 16#75#) or k(keys, 16#75#)) & (k(keys, 128 + 16#72#) or k(keys, 16#72#))
+       & (k(keys, 128 + 16#6B#) or k(keys, 16#6B#)) & (k(keys, 128 + 16#74#) or k(keys, 16#74#));
   -- board buttons: C = A, U/D/L/R = directions
   p1 <= pads(0) or kp1 or (btn_q(4) & "000" & btn_q(3) & btn_q(0) & btn_q(2) & btn_q(1));
   p2 <= pads(1) or kp2;

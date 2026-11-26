@@ -186,7 +186,9 @@ Boot ROM menüsündeyken (Select ile açılış, 5.2) basit bir monitör komut a
 
 ## 6. Oyunlar
 
-Her oyunda bir başlık ekranı çıkar, **A** ya da **Start** ile başlar. Oyun içinde **Start** duraklatır.
+Her oyunda bir başlık ekranı çıkar, **Space** ya da **Enter** (kolda A / Start) ile başlar. Oyun içinde **Space**
+duraklatır. Ekranlardaki yazılar artık kol harfleri yerine klavye tuşlarının adlarını gösterir (**Shift** = A,
+**Ctrl** = B, **Tab** = Select, **Space/Enter** = Start). Tüm tuşların listesi: [TUSLAR.md](TUSLAR.md).
 **Oyundan çıkmak:** klavyede **Esc**, kolda **Select + Start** her oyunda seçme ekranına döner. Puan oyunun üst satırında ve 7-segment göstergenin sağ dört hanesinde görünür.
 
 ### Blok Yağmuru (1 oyuncu)
@@ -198,8 +200,8 @@ Yukarıdan düşen dört kareli yedi çeşit parçayı 10 x 20'lik kuyuya yerle�
 
 - Sol/sağ: kaydır (basılı tutunca hızlanır). **Aşağı**: hızlı düşür (her sıra 1 puan). **Yukarı**: anında bırak
   (sıra başına 2 puan).
-- **A**: sağa, **B**: sola döndür (duvara yakınken parça biraz kayarak döner). Klavyede **X** sağa, **Z** sola
-  da döndürür (kolun A'sı Sol Shift, B'si Sol Ctrl'dir). **Select** (ya da **C**): parçayı "TUT" kutusuna koy /
+- **X** ya da **Shift**: sağa, **Z** ya da **Ctrl**: sola döndür (duvara yakınken parça biraz kayarak döner;
+  kolda A / B). **Select** (ya da **C**): parçayı "TUT" kutusuna koy /
   oradakini al (her parçada bir kez). Select bırakıldığında çalışır, böylece Select + Start çıkışla karışmaz.
 - **Start** duraklatır; duraklatılmışken **Select** seçme ekranına döner.
 - Kesik çizgili **hayalet** parça, parçanın nereye ineceğini gösterir. Sağda sıradaki üç parça görünür.
@@ -279,14 +281,22 @@ ve düz gelir, mayınlar üç isabette patlar.
 
 ![Fitil Arenası](docs/05_fitil.png)
 
-Kurulum ekranında **OYUNCU SAYISI**'nı yukarı/aşağı ile seç (2–4), **Start** ile başlat. Her oyuncu kendi
-kolunu kullanır (1. ve 2. oyuncu klavyeyi de kullanabilir, 7. bölüm). Oyuncular kırmızı, mavi, yeşil ve sarı.
+Kurulum ekranında **OYUNCU SAYISI**'nı yukarı/aşağı ile seç (2–4), **Space** ya da **Enter** ile başlat. Her
+oyuncu kendi kolunu kullanır; 1. ve 2. oyuncu klavyeyi kullanabilir. Oyuncular kırmızı, mavi, yeşil ve sarı.
 
-- Yön tuşları: yürü. **A**: bomba bırak.
-- Bomba yaklaşık 2,5 saniye sonra artı şeklinde patlar. Kahverengi sandıkları kırar; sandıktan bazen güç çıkar:
-  bomba sayısı, patlama menzili, hız.
-- Alevin içinde kalan elenir. Bombalar birbirini patlatabilir.
-- Son ayakta kalan turu alır; üç tur kazanan maçı alır. Üst satırda tur ve skorlar (`P1:0  P2:0 …`).
+| | Yürü | Bomba |
+| --- | --- | --- |
+| 1. oyuncu (kırmızı) | **W A S D** | **Sol Shift** (ya da Sol Ctrl) |
+| 2. oyuncu (mavi) | **Ok tuşları** | **Sağ Shift** (ya da Sağ Ctrl) |
+| 3.–4. oyuncu | NES/SNES kolu | A (ya da B) |
+
+- Bomba yaklaşık 2,5 saniye sonra artı şeklinde patlar; fitili kısaldıkça daha hızlı "nefes alır". Alevler
+  yönlüdür (uçları yuvarlak), kesiştikleri yerde artı olur. Sandıkları kırar; sandıktan bazen güç çıkar:
+  mor rozetler — **bomba** (aynı anda bir bomba fazla), **alev** (menzil +1), **şimşek** (hız).
+- Alevin içinde kalan elenir ve hayalet olup yukarı süzülür. Bombalar birbirini patlatabilir.
+- Son ayakta kalan turu alır; üç tur kazanan maçı alır. Üst satırda tur ve her oyuncunun kafası ile kazandığı
+  turlar (yıldızlar). Maçı kazanan büyük yazıyla ilan edilir.
+- Arena çevresindeki tuğla duvardan hiçbir şekilde çıkılamaz (oyun, sınır hücrelerini her zaman duvar sayar).
 
 ### Mahalle Olimpiyatı (1–4 oyuncu, sırayla)
 
@@ -311,12 +321,20 @@ Her yarışmadan sonra puan tablosu gelir (birinci 4, ikinci 3, üçüncü 2, d�
 | | 1. oyuncu | 2. oyuncu | 1–4. oyuncu |
 | --- | --- | --- | --- |
 | Yönler | W A S D, kart butonları (BTNU/BTND/BTNL/BTNR) | Ok tuşları | NES/SNES kolu |
-| A | Sol Shift, BTNC (orta buton) | Sağ Ctrl | A |
-| B | Sol Ctrl | Sağ Shift | B |
+| A | Sol Shift, BTNC (orta buton) | Sağ Shift | A |
+| B | Sol Ctrl | Sağ Ctrl | B |
 | Select / Start | Tab / Space | Backspace / Enter | Select / Start |
 | Menüye dön | Esc | Esc | Select + Start |
 
-Kart butonları ve klavye, 1. oyuncunun kolunun yerine geçer, ikisi aynı anda da çalışır.
+Kart butonları ve klavye, 1. oyuncunun kolunun yerine geçer, ikisi aynı anda da çalışır. Klavyede **Shift her
+zaman A, Ctrl her zaman B**'dir (solda 1., sağda 2. oyuncu). Tek oyunculu oyunlar iki klavye oyuncusunu da dinler:
+ok tuşları ve Sağ Shift ile de oynanır.
+
+**Ok tuşları ve kartın USB denetleyicisi:** Nexys 4 DDR'ın PIC24 yazılımı sol, yukarı ve aşağı ok tuşlarını
+başlarındaki `E0` olmadan gönderir (yalnızca sağ ok `E0 74` gelir); bu, Digilent forumlarında bilinen bir
+hatadır. Konsol iki biçimi de ok tuşu sayar (bu yüzden sayısal tuş takımındaki 8 4 2 6 de 2. oyuncuyu yürütür).
+Ayrıca tek başına gelen bir `E0`/`F0` 10 ms sonra unutulur (yoksa bir sonraki tuş yanlış yere yazılıp "takılı"
+kalıyordu) ve klavye takılınca gönderdiği `AA` tüm tuşları bırakılmış sayar.
 
 **NES/SNES kolu bağlantısı (Pmod JA, üst sıra 1–4, alt sıra 7–10):**
 
@@ -369,11 +387,11 @@ Sırayla dene ve her biri için ✓ ya da gördüğün farkı not al:
 - [ ] Bir oyundan Select + Start ile dönünce animasyonsuz, aynı oyun seçili geliyor
 - [ ] Select basılıyken CPU RESET: boot ROM menüsü; Serial Terminal'de `RETRO KONSOL BOOT ROM` ve `K65>` (5.3)
 - [ ] Monitörde `W 8406 FF` yazınca alttaki 8 LED yanıyor
-- [ ] Klavye: A/D ile seçme ekranında gezinme; oyunda W+A+Sol Shift ile Yukarı+Sol+Sağ Ctrl aynı anda
+- [ ] Klavye: A/D ile seçme ekranında gezinme; oyunda W+A+Sol Shift ile Yukarı+Sol+Sağ Shift aynı anda
 - [ ] NES kolu: menüde gezinme, Fitil Arenası'nda her kolun kendi oyuncusu
 - [ ] Kristal Ocak: kazma, düşen kaya, kristal toplama, üst satırın kaymadan durması
 - [ ] Yıldız Muhafızı: ateş sesi, patlama, düşman ateşi
-- [ ] Fitil Arenası: 2–4 oyuncuyla bir maç
+- [ ] Fitil Arenası: 2–4 oyuncuyla bir maç; 2. oyuncu dört ok tuşuyla da yürüyor, kimse sol duvardan çıkamıyor
 - [ ] Mahalle Olimpiyatı: üç yarışma ve şampiyon ekranı
 - [ ] Blok Yağmuru: döndürme, tutma, sıra silme, dörtlüde ekran sarsıntısı, seviye artınca hızlanma
 - [ ] Tılsım: el oynama ve atma, puanlamanın adım adım gösterilmesi, kapı açılınca pazar, tılsım alıp satma
@@ -395,6 +413,8 @@ Sırayla dene ve her biri için ✓ ya da gördüğün farkı not al:
 | Menüde `KARTUS BULUNAMADI` | `make -C sw` çalıştırılmadan bitstream üretilmiş olabilir. `make -C sw`, sonra yeniden Generate Bitstream |
 | Ses yok | Kulaklığı kartın ses jakına tak, sesi biraz aç. Açılış melodisi her resetten sonra çalar |
 | Klavye çalışmıyor, BUSY (sarı) LED yanıp sönüyor | PS/2 hatlarında FPGA'nın pull-up'ları yoksa PIC24 tuşları gönderemez. 20 Kasım'dan önceki bitstream'lerde bu eksikti: VivadoMac'i ve bitstream'i yeniden üret. Klavyeyi **USB HOST** portuna doğrudan tak (hub olmaz) |
+| 2. oyuncunun ok tuşları çalışmıyor (yalnızca sağ ok çalışıyor) | 26 Kasım'dan önceki bitstream: kartın USB denetleyicisi sol/yukarı/aşağı okları `E0`'sız gönderiyor (7. bölüm). `make -C sw` ve yeniden Generate Bitstream |
+| Bir karakter kendi kendine bir yöne gidiyor, tuş takılı kalmış gibi | Aynı eski bitstream'deki "yalnız E0" hatası. Yeni bitstream'le düzelir; o an için klavyeyi çıkarıp takmak tüm tuşları bırakır |
 | Klavye hâlâ çalışmıyor | Serial Terminal'de W'ye basılı tutarken `D 8210` yaz: dördüncü bayt `20` olmalı. Hep `00` ise tuş FPGA'ya ulaşmıyor; başka (sade, multimedya tuşsuz) bir USB klavye dene |
 | Flash'tan açılmıyor | JP1 QSPI'de mi? 8. bölümdeki iki yazma işlemi de `verified` ile bitti mi? |
 
@@ -404,7 +424,7 @@ Sırayla dene ve her biri için ✓ ya da gördüğün farkı not al:
 
 **Sanal kart (asıl tasarım):** VivadoMac'te Flow Navigator > **Virtual Board**. Sentezlenen tasarımın kendisi
 Verilator ile Mac'te çalışır: VGA ekranı, LED'ler, 7-segment, switch'ler, butonlar ve UART ekranda; ekrana
-tıklayınca Mac klavyesi kartın USB klavyesi olur (sağ ⌘ = Sağ Ctrl). Pencerede hangi Mac tuşunun hangi konsol
+tıklayınca Mac klavyesi kartın USB klavyesi olur (sağ ⌘ = Sağ Ctrl, 2. oyuncunun B'si). Pencerede hangi Mac tuşunun hangi konsol
 düğmesi olduğunu gösteren bir tablo var; basılı tuşlar orada yanar. Gerçek hızın yaklaşık onda biriyle çalışır,
 yani oyunlar ağır çekimde akar ama donanımın doğru çalışıp çalışmadığı birebir görülür. İlk açılışta sentez ve
 derleme bir iki dakika sürer. `tests/run_tests.sh vboard` aynı şeyi pencere açmadan dener.

@@ -260,8 +260,8 @@ static void draw_frame_static(void) {
     text(25, 1, (CART_SRC & 1) ? "FLASH" : "BRAM", 0);
     k_print_num(31, 1, ngames, 1, 1);
     text(33, 1, "OYUN", 0);
-    text(8, 14, "< > SEC", 0);
-    text(19, 14, "A / START OYNA", 1);
+    text(6, 14, "OKLAR SEC", 0);
+    text(18, 14, "ENTER/SPACE OYNA", 1);
 }
 
 /* ---------------------------------------------------------------- splash (cold start) */

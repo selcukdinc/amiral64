@@ -49,6 +49,25 @@ def frame_tile(kind):
     return c.text_rows(0, 0, 8, 8)
 for name in ("TL", "T", "TR", "L", "C", "R", "BL", "B", "BR"):
     out.append(block("tile", f"fr{name}", frame_tile(name)))
+# well rim: a 3-pixel border right against the well (no strip of panel colour between the rim and the
+# blocks, which looked like one more column), the rest of the tile is the background pattern.
+# The name says where the tile sits: wTL = above and left of the well (the well is down and right).
+def well_tile(kind):
+    c = Canvas(8, 8)
+    for y in range(8):
+        for x in range(8):
+            c.set(x, y, 5 if (x + y) % 8 < 2 else 4)
+            ds = []
+            if "L" in kind: ds.append(7 - x)       # well to the right
+            if "R" in kind: ds.append(x)
+            if "T" in kind: ds.append(7 - y)       # well below
+            if "B" in kind: ds.append(y)
+            d = max(ds)
+            if d <= 2:
+                c.set(x, y, 1 if d < 2 else 2)
+    return c.text_rows(0, 0, 8, 8)
+for name in ("TL", "T", "TR", "L", "R", "BL", "B", "BR"):
+    out.append(block("tile", f"w{name}", well_tile(name)))
 
 s = Canvas(16, 16); s.disc(8, 8, 2.5, 3); s.disc(8, 8, 1.4, 2); s.set(8, 8, 1)
 out.append(block("sprite", "spark", s.text_rows(0, 0, 16, 16)))

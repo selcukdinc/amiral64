@@ -811,7 +811,7 @@ irq_entry:
 msg_title:  .byte "RETRO KONSOL", 0
 msg_sub:    .byte "6502 . NEXYS 4 DDR", 0
 msg_pick:   .byte "OYUN SEC", 0
-msg_help:   .byte "YUKARI/ASAGI SEC  A/START OYNA", 0
+msg_help:   .byte "OKLAR: SEC  SPACE/ENTER: OYNA", 0
 msg_nocart: .byte "KARTUS BULUNAMADI", 0
 msg_bram:   .byte "BRAM", 0
 msg_flash:  .byte "FLASH", 0

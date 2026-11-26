@@ -179,10 +179,10 @@ static void title(void) {
     k_clear_map();
     k_print(12, 6, "YILDIZ MUHAFIZI", 1);
     k_print(7, 10, "GEMIYI YON TUSLARIYLA SUR,", 0);
-    k_print(7, 12, "A ILE ATES ET.", 0);
+    k_print(7, 12, "SHIFT ILE ATES ET.", 0);
     k_print(7, 15, "DAIRE   20   OK   30", 2);
     k_print(7, 17, "MAYIN 50 (UC ISABET)", 2);
-    k_print(9, 22, "A / START ILE BASLA", 1);
+    k_print(9, 22, "SPACE/ENTER: BASLA ", 1);
     k_sprite(1, 64, 110, S_saucer, 8);
     k_sprite(2, 120, 110, S_dart, 8);
     k_sprite(3, 64, 126, S_mine, 8);

@@ -169,8 +169,9 @@ k.pads[0] = 0
 
 k, S = load_game("fitil")
 check("fitil: fits in 20 KB", len(rom("game_fitil.bin")) <= 0x5000)
-run(k, 10, shot="fitil_setup.png")
-check("fitil: setup screen", "FITIL ARENASI" in screen_text(k) and "OYUNCU SAYISI" in screen_text(k))
+run(k, 40, shot="fitil_setup.png")
+check("fitil: setup screen names the keys", "OYUNCU SAYISI" in screen_text(k) and "SOL SHIFT" in screen_text(k)
+      and "OKLAR" in screen_text(k), screen_text(k))
 hold(k, 0x08, 2); hold(k, 0x08, 2)        # 4 players
 check("fitil: player count", peek(k, S, "nplayers") == 4, f"{peek(k, S, 'nplayers')}")
 hold(k, 0x04, 2)                          # back to 3
@@ -181,8 +182,8 @@ check("fitil: 3-player round starts", peek(k, S, "nplayers") == 3 and peek(k, S,
 G = lambda x, y: peek(k, S, "grid", y * 15 + x)
 hold(k, 0x80, 1)                          # P1 drops a bomb at (1,1) ...
 check("fitil: bomb placed", G(1, 1) == 3, f"{G(1,1)}")
-hold(k, 0x04, 40)                         # ... and walks down to (1,3)
-check("fitil: P1 walked to safety", (peek(k, S, "px"), peek(k, S, "py")) == (1, 3), f"({peek(k, S, 'px')},{peek(k, S, 'py')})")
+hold(k, 0x04, 40)                         # ... and walks down, out of the flame's reach
+check("fitil: P1 walked to safety", peek(k, S, "px") == 1 and peek(k, S, "py") >= 3, f"({peek(k, S, 'px')},{peek(k, S, 'py')})")
 run(k, 130, shot="fitil_boom.png")
 check("fitil: bomb exploded, P1 survived", G(1, 1) == 0 and peek(k, S, "palive") == 1)
 # P2 and P3 blow themselves up: P1 wins the round
@@ -190,6 +191,13 @@ k.pads[1] = 0x80; k.pads[2] = 0x80
 run(k, 2); k.pads[1] = 0; k.pads[2] = 0
 run(k, 240, shot="fitil_round.png")
 check("fitil: last player standing wins the round", peek(k, S, "pwins") == 1, f"wins={[peek(k, S, 'pwins', i) for i in range(4)]}")
+check("fitil: round message", "OYUNCU TURU ALDI" in screen_text(k), screen_text(k))
+# nobody leaves the arena: walking into the border is refused even if the grid said floor there
+run(k, 100)                               # round 2 has started
+k.wr(S["_grid"] + 1 * 15 + 0, 0)          # pretend the left border cell next to P1 were floor
+hold(k, 0x02, 30)                         # P1 holds Left at (1,1)
+check("fitil: the border is never walkable", peek(k, S, "round_no") == 2 and peek(k, S, "px") == 1,
+      f"round {peek(k, S, 'round_no')} px {peek(k, S, 'px')}")
 
 k, S = load_game("olimpiyat")
 check("olimpiyat: fits in 20 KB", len(rom("game_olimpiyat.bin")) <= 0x5000)
@@ -205,7 +213,7 @@ for f in range(20000):
         break
     txt = screen_text(k)
     toggle ^= 1
-    if "DEVAM: A" in txt or "HAZIR: A" in txt:
+    if "DEVAM: SHIFT" in txt or "HAZIR: SHIFT" in txt:
         k.pads[0] = 0x80 if toggle else 0
     elif ev in (1, 2):
         k.pads[0] = 0x80 if (f >> 1) & 1 else 0x40          # A, B, A, B ...

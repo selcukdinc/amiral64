@@ -398,8 +398,8 @@ static int card_x(u8 i) { return (3 + i * 4 + (hand_n < 8 ? (8 - hand_n) * 2 : 0
 
 static void hints(void) {
     blank(0, 26, 40, 2);
-    text(1, 26, "A SEC  START OYNA  SELECT AT", 0);
-    text(1, 27, "B SIRALA  YUKARI TILSIMLAR  ESC MENU", 0);
+    text(1, 26, "SHIFT SEC  SPACE OYNA  TAB AT", 0);
+    text(1, 27, "CTRL SIRALA  YUKARI TILSIMLAR  ESC MENU", 0);
 }
 
 static void draw_all(void) {
@@ -629,8 +629,8 @@ static void shop(void) {
     for (i = 0; i < 3; ++i) draw_offer(i, 0);
     text(1, 23, "ALTIN", 1);
     blank(0, 25, 40, 3);
-    text(1, 25, "A AL  SELECT YENILE $", 0);
-    text(1, 26, "YUKARI SAT  START DEVAM", 0);
+    text(1, 25, "SHIFT AL TAB YENILE $", 0);
+    text(1, 26, "YUKARI SAT  SPACE DEVAM", 0);
     for (;;) {
         num(7, 23, gold, 0);
         k_print_num(22, 25, reroll, 1, 1);
@@ -742,8 +742,8 @@ static u8 gate_map(void) {
             else text(x + 1, 12, tag_d2[tag_kind[g]], 2);
         }
     }
-    text(1, 16, "A GIR", 1);
-    if (gate < 2) text(8, 16, "B ATLA, ETIKETI AL", 0);
+    text(1, 16, "SHIFT GIR", 1);
+    if (gate < 2) text(11, 16, "CTRL ATLA+ETIKET", 0);
     text(29, 16, "ALTIN", 1); num(35, 16, gold, 0);
     hand_table();
     for (;;) {
@@ -804,7 +804,7 @@ static void run(void) {
             banner("TILSIM BOZULDU", 3);
             text(8, 14, "DURAK", 0); k_print_num(14, 14, stop_ + 1, 1, 1);
             text(17, 14, "EN IYI EL", 0); num(27, 14, best_hand, 1);
-            text(13, 15, "A: BASLIGA", 0);
+            text(13, 15, "SHIFT: BASLIGA", 0);
             k_sfx(SFX_LOSE);
             do k_wait_frame(); while (!((pad_new[0] | pad_new[1]) & (BTN_A | BTN_START)));
             return;
@@ -851,7 +851,7 @@ static void title(void) {
     text(5, 21, "YENI TOHUMLA BASLA", 1);
     text(5, 23, "EN IYI DURAK", 0); k_print_num(18, 23, best_stop, 1, 1);
     text(3, 27, "YUKARI ASAGI SATIR   SOL SAG DEGISTIR", 0);
-    text(3, 28, "ESC  SELECT+START: MENU", 0);
+    text(3, 28, "SHIFT/SPACE SEC   ESC: MENU", 0);
     for (;;) {
         if (redraw) {
             redraw = 0;

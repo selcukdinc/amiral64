@@ -366,10 +366,19 @@ static void background(void) {
     }
 }
 
+/* the well's rim hugs the playfield: no panel-coloured strip that looks like one more column */
+static void well_frame(void) {
+    unsigned char i;
+    put(WELL_X - 1, WELL_Y - 1, T_wTL, PAL_UI); put(WELL_X + COLS, WELL_Y - 1, T_wTR, PAL_UI);
+    put(WELL_X - 1, WELL_Y + 20, T_wBL, PAL_UI); put(WELL_X + COLS, WELL_Y + 20, T_wBR, PAL_UI);
+    for (i = 0; i < COLS; ++i) { put(WELL_X + i, WELL_Y - 1, T_wT, PAL_UI); put(WELL_X + i, WELL_Y + 20, T_wB, PAL_UI); }
+    for (i = 0; i < 20; ++i) { put(WELL_X - 1, WELL_Y + i, T_wL, PAL_UI); put(WELL_X + COLS, WELL_Y + i, T_wR, PAL_UI); }
+}
+
 static void draw_playfield(void) {
     unsigned char x, y;
     background();
-    panel(WELL_X - 1, WELL_Y - 1, COLS + 2, 22);
+    well_frame();
     for (y = 0; y < 20; ++y) for (x = 0; x < COLS; ++x) { shown[y][x] = 255; draw_cell(x, y, 0); }
     panel(3, 4, 8, 6);   k_print(4, 5, "TUT", 2);
     panel(3, 11, 10, 14);
@@ -378,12 +387,13 @@ static void draw_playfield(void) {
     k_print(4, 18, "SIRA", 1);
     k_print(4, 21, "EN IYI", 1);
     panel(28, 4, 8, 15); k_print(29, 5, "SIRADAKI", 2);
-    k_print(28, 20, "A X  SAGA", 0);
-    k_print(28, 21, "B Z  SOLA", 0);
-    k_print(28, 22, "YUKARI BIRAK", 0);
-    k_print(28, 23, "SELECT C TUT", 0);
-    k_print(28, 24, "START  DUR", 0);
-    k_print(28, 25, "ESC   MENU", 0);
+    k_print(28, 20, "OKLAR  YURU", 2);
+    k_print(28, 21, "X/SHIFT SAGA", 0);
+    k_print(28, 22, "Z/CTRL  SOLA", 0);
+    k_print(28, 23, "YUKARI BIRAK", 0);
+    k_print(28, 24, "C      TUT", 0);
+    k_print(28, 25, "SPACE  DUR", 0);
+    k_print(28, 26, "ESC    MENU", 0);
     big_reset();
     big_text(WELL_X - 1, 1, "BLOK");
     k_print(WELL_X + 8, 2, "YAGMURU", 2);
@@ -409,8 +419,8 @@ static void title(void) {
     big_center(6, "BLOK YAGMURU");
     panel(10, 14, 20, 9);
     k_print(12, 15, "BASLANGIC SEVIYESI", 1);
-    k_print(13, 19, "A / START: BASLA", 0);
-    k_print(8, 27, "ESC / SELECT+START: MENU", 0);
+    k_print(11, 19, "SPACE/ENTER BASLA", 0);
+    k_print(11, 27, "ESC: MENUYE DON", 0);
     k_print(14, 25, "EN IYI", 1);
     print_long(21, 25, best, 7, 0);
     for (i = 0; i < 8; ++i) { fx[i] = k_rand() % 38; fy[i] = k_rand() % 30; fp[i] = k_rand() % 7; }
@@ -460,7 +470,7 @@ static void play(void) {
         if (p & BTN_START) {
             paused = !paused;
             k_print(WELL_X + 1, WELL_Y + 9, paused ? "DURAKLADI" : "         ", 1);
-            k_print(WELL_X, WELL_Y + 11, paused ? "SELECT MENU" : "           ", 0);
+            k_print(WELL_X, WELL_Y + 11, paused ? " ESC MENU  " : "           ", 0);
             if (!paused) {
                 unsigned char x;
                 for (x = 0; x < COLS; ++x) { shown[9][x] = 255; shown[11][x] = 255; }
@@ -526,7 +536,7 @@ static void play(void) {
     panel(WELL_X - 2, 10, 14, 6);
     k_print(WELL_X + 0, 11, "OYUN BITTI", 3);
     print_long(WELL_X + 1, 13, score, 7, 0);
-    k_print(WELL_X - 1, 14, best == score && score ? "  YENI REKOR!" : " A: TEKRAR", 1);
+    k_print(WELL_X - 1, 14, best == score && score ? "  YENI REKOR!" : " SPACE TEKRAR", 1);
     for (i = 0; i < NP; ++i) plife[i] = 0;
     for (i = 0; i < 60; ++i) { k_wait_frame(); particles(); }
     do k_wait_frame(); while (!((pad_new[0] | pad_new[1]) & (BTN_A | BTN_START)));

@@ -1,6 +1,6 @@
 -- K4: keyboard and pads. A PS/2 device sends W (make), E0 75 (up arrow), F0 1D (W break) and a frame with
 -- a parity error; four NES pads (CD4021 models) hold different buttons. Checks the key table, the scan code
--- FIFO, the keyboard players and the pad bytes.
+-- FIFO, the keyboard players and the pad bytes; then the PIC24's arrows without E0, a lone E0 and the AA reset.
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -80,11 +80,29 @@ begin
     rd(5, v); assert v = x"00" report "FIFO should be empty (bad parity frame dropped)" severity failure;
     ps2_send(x"F0"); ps2_send(x"1D");   -- W up
     rd(0, v); assert v = x"00" report "W release" severity failure;
+    -- PIC24 firmware: Left arrow arrives without E0 (6B), its release too; player 2 must still go left
+    ps2_send(x"E0"); ps2_send(x"F0"); ps2_send(x"75");   -- up arrow up (E0 form)
+    ps2_send(x"6B");
+    rd(1, v); assert v = x"02" report "pad 2 (left arrow without E0): " & to_hstring(v) severity failure;
+    ps2_send(x"E0"); ps2_send(x"F0"); ps2_send(x"6B");   -- released in the other form: both entries clear
+    rd(1, v); assert v = x"00" report "pad 2 left arrow release: " & to_hstring(v) severity failure;
+    -- a lone E0 must not shift the next key (A = player 1 left) to the E0 half of the table
+    ps2_send(x"E0");
+    wait for 12 ms;
+    ps2_send(x"1C");
+    rd(0, v); assert v = x"02" report "pad 1 (A after a lone E0): " & to_hstring(v) severity failure;
+    ps2_send(x"F0"); ps2_send(x"1C");
+    rd(0, v); assert v = x"00" report "A release after a lone E0 (stuck key): " & to_hstring(v) severity failure;
+    -- the keyboard's self-test byte clears every held key
+    ps2_send(x"1C"); ps2_send(x"E0"); ps2_send(x"74");
+    ps2_send(x"AA");
+    rd(0, v); assert v = x"00" report "AA should clear pad 1: " & to_hstring(v) severity failure;
+    rd(1, v); assert v = x"00" report "AA should clear pad 2: " & to_hstring(v) severity failure;
     -- pads: one frame tick starts a read; it takes about 18 x 6 us
     frame_tick <= '1'; wait until rising_edge(clk); frame_tick <= '0';
     wait for 150 us; wait until rising_edge(clk);
     rd(0, v); assert v = PRESSED(0) report "pad 1 " & to_hstring(v) severity failure;
-    rd(1, v); assert v = (PRESSED(1) or x"08") report "pad 2 " & to_hstring(v) severity failure;
+    rd(1, v); assert v = PRESSED(1) report "pad 2 " & to_hstring(v) severity failure;
     rd(2, v); assert v = PRESSED(2) report "pad 3 " & to_hstring(v) severity failure;
     rd(3, v); assert v = PRESSED(3) report "pad 4 " & to_hstring(v) severity failure;
     rd(9, v); assert v = x"BE" report "switches" severity failure;

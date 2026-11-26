@@ -60,7 +60,7 @@ static void turn_title(const char *what) {
     k_print(2, 0, what, 1);
     k_print(2, 2, "OYUNCU", 2);
     k_print_num(9, 2, cur + 1, 1, 2);
-    k_print(11, 2, "HAZIR: A", 0);
+    k_print(11, 2, "HAZIR: SHIFT", 0);
     wait_a();
     k_fill_tiles(11, 2, 20, 1, ' ', 0);
 }
@@ -71,7 +71,7 @@ static void event_run(void) {
     /* finish line */
     k_fill_tiles(36, TRACK_ROW, 1, 3, T_line, 4);
     for (cur = 0; cur < nplayers; ++cur) {
-        turn_title("KOSU 100 M   A-B-A-B !");
+        turn_title("KOSU 100 M  SHIFT-CTRL SIRAYLA!");
         dist = 0; speed = 0; t = 0; last_btn = 0; runner_x = 8;
         runner(S_run1);
         k_print(18, 2, "3", 3); k_sfx(SFX_TICK); wait_frames(40);
@@ -104,7 +104,7 @@ static void event_jump(void) {
     for (cur = 0; cur < nplayers; ++cur) {
         best = 0;
         for (tries = 0; tries < 2; ++tries) {
-            turn_title("UZUN ATLAMA  A-B KOS, YUKARI ATLA");
+            turn_title("UZUN ATLAMA SHIFT-CTRL KOS,YUKARI ATLA");
             k_print(30, 2, "DENEME", 0);
             k_print_num(37, 2, tries + 1, 1, 0);
             speed = 0; last_btn = 0; runner_x = 8; jumped = 0; t = 0;
@@ -142,7 +142,7 @@ static void event_reflex(void) {
     unsigned char t, wait, early;
     field();
     for (cur = 0; cur < nplayers; ++cur) {
-        turn_title("REFLEKS  ISARETI BEKLE, A'YA BAS");
+        turn_title("REFLEKS  ISARETI BEKLE, SHIFT'E BAS");
         k_print(14, 8, "HAZIR...", 0);
         wait = 60 + (k_rand() & 127) + (k_rand() & 63);
         early = 0;
@@ -192,7 +192,7 @@ static void scoreboard(const char *title) {
         k_print_num(22, 8 + 2 * i, points[i], 2, 0);
         k_print(25, 8 + 2 * i, "PUAN", 0);
     }
-    k_print(12, 22, "DEVAM: A", 0);
+    k_print(12, 22, "DEVAM: SHIFT", 0);
     cur = 0;
     wait_a();
 }
@@ -213,7 +213,7 @@ void main(void) {
         k_print(6, 9, "KOSU, UZUN ATLAMA VE REFLEKS:", 0);
         k_print(6, 11, "SIRAYLA OYNANAN UC YARISMA.", 0);
         k_print(10, 16, "OYUNCU SAYISI:", 2);
-        k_print(6, 21, "YUKARI/ASAGI SEC   START BASLAT", 0);
+        k_print(6, 21, "YUKARI/ASAGI SEC  SPACE/ENTER BASLA", 0);
         cur = 0;
         for (;;) {
             k_print_num(25, 16, nplayers, 1, 1);
