@@ -24,15 +24,23 @@ $(B)/konsol.o: lib/konsol.c lib/konsol.h $(B)/font.h | $(B)
 $(B)/%/art.h: games/%/art.txt ../tools/gfx.py
 	mkdir -p $(dir $@)
 	python3 ../tools/gfx.py $< $@
-$(B)/%/main.o: games/%/main.c lib/konsol.h $(B)/%/art.h
-	$(CC65) -O -t none -I lib -I $(B)/$* -o $(B)/$*/main.s $<
+$(B)/%/main.o: games/%/main.c lib/konsol.h $(B)/%/art.h $(B)/font.h
+	$(CC65) -O -t none -I lib -I $(B)/$* -I $(B) -o $(B)/$*/main.s $<
 	$(CA65) -o $@ $(B)/$*/main.s
-$(B)/game_%.bin: $(B)/%/main.o $(LIBOBJ) game_c.cfg
-	$(LD65) -C game_c.cfg -o $@ -Ln $(B)/game_$*.lbl -m $(B)/game_$*.map $(LIBOBJ) $< $(NONELIB)
+# optional library parts (linked only into the games that use them)
+$(B)/bigtext.o: lib/bigtext.c lib/bigtext.h lib/konsol.h | $(B)
+	$(CC65) -O -t none -I lib -o $(B)/bigtext.s $<
+	$(CA65) -o $@ $(B)/bigtext.s
+$(B)/konsolx.lib: $(B)/bigtext.o
+	rm -f $@; ar65 a $@ $^
+# games bigger than 20 KB load at $0400 instead of $9000 (game_c_low.cfg; the cartridge entry says where)
+LOW_GAMES = tilsim
+$(B)/game_%.bin: $(B)/%/main.o $(LIBOBJ) $(B)/konsolx.lib game_c.cfg game_c_low.cfg
+	$(LD65) -C $(if $(filter $*,$(LOW_GAMES)),game_c_low.cfg,game_c.cfg) -o $@ -Ln $(B)/game_$*.lbl -m $(B)/game_$*.map $(LIBOBJ) $< $(B)/konsolx.lib $(NONELIB)
 
-# Games on the cartridge: NAME:players:binary
-CART_GAMES = "KRISTAL OCAK:1:$(B)/game_kristal.bin" "YILDIZ MUHAFIZI:1:$(B)/game_yildiz.bin" "FITIL ARENASI:2-4:$(B)/game_fitil.bin" "MAHALLE OLIMPIYATI:1-4:$(B)/game_olimpiyat.bin"
-CART_BINS = $(B)/game_kristal.bin $(B)/game_yildiz.bin $(B)/game_fitil.bin $(B)/game_olimpiyat.bin
+# Games on the cartridge: NAME:players:binary[:icon[:load address, hex]] ('*' = the launcher, started by the boot ROM)
+CART_GAMES = "*KONSOL:1:$(B)/game_launcher.bin" "KRISTAL OCAK:1:$(B)/game_kristal.bin:1" "BLOK YAGMURU:1:$(B)/game_blok.bin:5" "TILSIM:1:$(B)/game_tilsim.bin:6:0400" "YILDIZ MUHAFIZI:1:$(B)/game_yildiz.bin:2" "FITIL ARENASI:2-4:$(B)/game_fitil.bin:3" "MAHALLE OLIMPIYATI:1-4:$(B)/game_olimpiyat.bin:4"
+CART_BINS = $(B)/game_launcher.bin $(B)/game_kristal.bin $(B)/game_blok.bin $(B)/game_tilsim.bin $(B)/game_yildiz.bin $(B)/game_fitil.bin $(B)/game_olimpiyat.bin
 # test cartridge (menu tests, tb_boot): two tiny games that report on SYS_TEST
 TEST_GAMES = "TEST OYUN A:1:$(B)/gametest_A.bin" "TEST OYUN B:2-4:$(B)/gametest_B.bin"
 TEST_BINS = $(B)/gametest_A.bin $(B)/gametest_B.bin

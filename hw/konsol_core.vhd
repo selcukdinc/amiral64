@@ -9,7 +9,7 @@ entity konsol_core is
   generic (
     BOOT_ROM  : string := "boot.mem";
     CART_ROM  : string := "cart_";      -- cartridge image banks cart_00.mem .. (tools/mkcart.py)
-    CART_BANKS : integer := 16;         -- 16 x 4 KB = 64 KB
+    CART_BANKS : integer := 32;         -- 32 x 4 KB = 128 KB
     FLASH_BASE : integer := 16#400000#; -- flash cartridge starts after the bitstream
     FLASH_HALF : integer := 2           -- SPI clock = 25 MHz / (2 * FLASH_HALF) = 6.25 MHz
   );

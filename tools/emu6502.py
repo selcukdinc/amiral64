@@ -396,11 +396,17 @@ class Konsol:
     def frame(self, render=False):
         """One frame: visible lines (raster IRQ), vblank (NMI). Returns the picture when render."""
         per_line = CYCLES_PER_FRAME // LINES
-        pic = None
-        if render:
-            pic = self.ppu.frame()
+        pic = [] if render else None
+        prev = (self.ppu.scroll_x, self.ppu.scroll_y)
         for L in range(LINES):
             self.line = L
+            if render and L < 240:
+                # line by line, so raster splits show: a scroll written during line L-2 applies from line L
+                cur = (self.ppu.scroll_x, self.ppu.scroll_y)
+                self.ppu.scroll_x, self.ppu.scroll_y = prev
+                pic.append(self.ppu.line(L))
+                self.ppu.scroll_x, self.ppu.scroll_y = cur
+                prev = cur
             if L == 240:
                 self.vblank = True
                 self.frames += 1

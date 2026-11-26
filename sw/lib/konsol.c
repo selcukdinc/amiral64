@@ -3,6 +3,7 @@
 #include "font.h"
 
 unsigned char pad[4], pad_new[4];
+const unsigned char *const k_font = font_data;    /* for bigtext.c */
 static unsigned char pad_old[4];
 static unsigned rnd = 0x7A35;
 extern unsigned char scroll_xl, scroll_xh, scroll_y;
@@ -99,9 +100,16 @@ void k_split(unsigned char line, unsigned x, unsigned char y) {
     split_line = line;
 }
 
+unsigned char k_esc_menu = 1;
+
+unsigned char k_key(unsigned char code) {
+    return KEYMAP(code >> 3) & (1 << (code & 7));
+}
+
 void k_wait_frame(void) {
     unsigned char f = frame_count, i, p;
     while (frame_count == f) ;
+    if (k_esc_menu && (KEYMAP(KEY_ESC >> 3) & (1 << (KEY_ESC & 7)))) k_menu();
     for (i = 0; i < 4; ++i) {
         p = PAD_REG(i);
         pad_new[i] = p & ~pad_old[i];

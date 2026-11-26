@@ -22,6 +22,15 @@
 #define LEDS_LO     REG(0x8406)
 #define LEDS_HI     REG(0x8407)
 #define SYS_TEST    REG(0x87FF)
+#define KEYMAP(n)   REG(0x8210 + (n))   /* 256 key-down bits, PS/2 set 2 codes (E0 keys at code + $80) */
+
+/* PS/2 set 2 codes for k_key (E0 keys + $80) */
+#define KEY_ESC   0x76
+#define KEY_Z     0x1A
+#define KEY_X     0x22
+#define KEY_C     0x21
+#define KEY_SPACE 0x29
+#define KEY_ENTER 0x5A
 
 /* pad bits */
 #define BTN_A      0x80
@@ -50,9 +59,11 @@ typedef struct { unsigned char y, x, pattern, attr; } sprite_t;
 extern volatile unsigned char frame_count;
 extern unsigned char pad[4], pad_new[4];
 extern unsigned char split_line, split_xl, split_xh, split_y;   /* raster split (0 = none) */
+extern unsigned char k_esc_menu;           /* 1 (default): Esc on the keyboard goes back to the menu */
 
 void k_init(void);                         /* NMI handler, font, default palettes, clear screen and sprites */
-void k_wait_frame(void);                   /* wait for the next vblank, then read the pads */
+void k_wait_frame(void);                   /* wait for the next vblank, then read the pads (Esc: k_menu) */
+unsigned char k_key(unsigned char code);   /* a keyboard key is down (PS/2 code, see KEY_...) */
 void k_vaddr(unsigned addr);
 void k_vfill(unsigned addr, unsigned char v, unsigned len);
 void k_vcopy(unsigned addr, const unsigned char *src, unsigned len);

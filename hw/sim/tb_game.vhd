@@ -1,4 +1,4 @@
--- K8: the real cartridge: the boot ROM starts the first game (Kristal Ocak, a cc65 C program); its library
+-- K8: the real cartridge: the boot ROM starts the launcher (its first entry, a cc65 C program); its library
 -- reports $C0 when it starts and $C1 once vblank interrupts arrive through the RAM vectors.
 library ieee;
 use ieee.std_logic_1164.all;
@@ -28,7 +28,7 @@ begin
     wait until rising_edge(clk) and test_we = '1' for 50 ms;
     wait until rising_edge(clk);
     assert code = x"C1" report "the C game did not get going (code " & to_hstring(code) & ")" severity failure;
-    report "TEST PASSED (boot ROM -> Kristal Ocak (C) running at " & time'image(now) & ")";
+    report "TEST PASSED (boot ROM -> launcher (C) running at " & time'image(now) & ")";
     done <= true;
     wait;
   end process;

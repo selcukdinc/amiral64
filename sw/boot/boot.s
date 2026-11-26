@@ -1,5 +1,8 @@
 ; Retro konsol boot ROM: logo and start-up sound, game menu from the cartridge, game loader,
 ; and a small UART monitor (115200 8N1: D addr / W addr val / G addr / ?).
+; When the cartridge's first entry is a launcher (directory flags bit0), it is loaded straight away
+; instead of the logo and the menu (hold Select at power-up / reset for the menu). The launcher starts a
+; game through the API at $FFF0: JSR $FFF0 with A = directory index (never returns).
         .include "konsol.inc"
 
         .zeropage
@@ -58,8 +61,62 @@ reset:  sei
         lda #<msg_hello
         ldx #>msg_hello
         jsr uart_puts
-        jsr logo
+        jsr wait_frame          ; let the pads be read once
+        jsr wait_frame
+        lda PAD1
+        ora PAD2
+        and #$20                ; Select held: the boot ROM menu
+        bne @menu
+        jsr find_dir
+        lda dir
+        cmp #'K'
+        bne @menu
+        lda dir+4
+        beq @menu
+        lda dir+16+29           ; entry 0 flags
+        lsr a
+        bcc @menu
+        lda #0
+        sta cursor
+        jmp load_game
+@menu:  jsr logo
         jmp menu
+
+; directory from the QSPI flash if a cartridge is there, else from the BRAM cartridge
+find_dir:
+        lda #1
+        jsr read_dir
+        lda dir
+        cmp #'K'
+        bne @bram
+        lda dir+1
+        cmp #'6'
+        beq @ok
+@bram:  lda #0
+        jsr read_dir
+@ok:    rts
+
+; API: load and start game A of the directory, from the cartridge the caller was loaded from
+api_load_game:
+        sei
+        pha
+        lda #0
+        sta PPU_CTRL
+        sta $8111               ; sound off
+        lda #<boot_nmi
+        sta NMI_VEC
+        lda #>boot_nmi
+        sta NMI_VEC+1
+        lda #<boot_irq
+        sta IRQ_VEC
+        lda #>boot_irq
+        sta IRQ_VEC+1
+        lda CART_SRC
+        and #1
+        jsr read_dir
+        pla
+        sta cursor
+        jmp load_game
 
 ; ---------------------------------------------------------------- screen
 ; map entry (col, row) = $4000 + row * 128 + col * 2
@@ -237,17 +294,8 @@ logo:   lda #15
 ; ---------------------------------------------------------------- menu
 menu:   jsr clear_screen
         ; the cartridge in the QSPI flash wins over the one built into the bitstream (BRAM)
-        lda #1
-        jsr read_dir
-        lda dir
-        cmp #'K'
-        bne @bram
-        lda dir+1
-        cmp #'6'
-        beq @check
-@bram:  lda #0
-        jsr read_dir
-@check: jmp check_dir
+        jsr find_dir
+        jmp check_dir
 
 read_dir:                       ; A = source (1 flash, 0 BRAM): header + directory into dir
         sta CART_SRC
@@ -785,6 +833,9 @@ palette:    ; 16 palettes of 16 colours: [GGGGBBBB, ----RRRR]
 palette_end:
 
         .include "font.inc"
+
+        .segment "API"
+        jmp api_load_game       ; $FFF0
 
         .segment "VECTORS"
         .word nmi_entry, reset, irq_entry

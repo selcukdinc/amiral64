@@ -3,7 +3,7 @@
 Digilent Nexys 4 DDR kartı için 6502 işlemcili bir oyun konsolu. Tamamı VHDL ile yazıldı ve macOS'ta
 VivadoMac'in açık kaynak akışıyla (GHDL, yosys, nextpnr-xilinx, openFPGALoader) derleniyor. İçinde T65 işlemci,
 karo ve sprite tabanlı bir görüntü birimi (PPU), dört kanallı bir ses birimi (APU), klavye, dört NES/SNES kolu,
-UART, açılış menüsü ve kartuşta dört oyun var.
+UART, animasyonlu bir açılış ve oyun seçme ekranı (launcher) ve kartuşta altı oyun var.
 
 Bu belge, projeyi ilk kez karta yükleyecek ve test edecek kişi için yazıldı: her adımda ne yapacağını ve
 karşısına ne çıkacağını anlatıyor.
@@ -42,8 +42,8 @@ Terminalde `retro-konsol` klasöründe:
 make -C sw
 ```
 
-Bu komut boot ROM'u, dört oyunu ve kartuşu derler. Bitince `sw/build/` klasöründe `boot.mem`, `cart_00.mem` …
-`cart_0f.mem` ve `cart.bin` dosyaları olur. "Warning: 'sprites_data' is defined but never used" gibi
+Bu komut boot ROM'u, launcher'ı, altı oyunu ve kartuşu (128 KB) derler. Bitince `sw/build/` klasöründe
+`boot.mem`, `cart_00.mem` … `cart_1f.mem` ve `cart.bin` dosyaları olur. "Warning: 'sprites_data' is defined but never used" gibi
 uyarılar normaldir.
 
 Sonra VivadoMac projesini oluştur:
@@ -68,13 +68,13 @@ cd vivado
 3. **Messages** sekmesinde birkaç sarı uyarı göreceksin. Bunlar normal:
    - `no assignment for offsets 8:15 of signal "ABC"` (ayrıca `"X"` ve `"Y"`) ve
      `comparing non-numeric vector is unexpected`: T65 işlemci çekirdeğinin kendi kodundan gelir, zararsızdır.
-   - `Synthesis finished: yaklaşık 2900 LUTs` bilgisi.
+   - `Synthesis finished: yaklaşık 3000 LUTs` bilgisi.
 4. Bitince "Bitstream Generation successfully completed." yazan bir pencere açılır. **Open Hardware Manager and program the
    device** seçeneğiyle devam edebilirsin.
 
 Bitstream dosyası: `vivado/konsol/konsol.runs/impl_1/konsol_top.bit`.
 
-Zamanlama raporu (**Report Timing Summary**) `clk` saati için 25 MHz hedefte yaklaşık 55 MHz Fmax ve pozitif
+Zamanlama raporu (**Report Timing Summary**) `clk` saati için 25 MHz hedefte yaklaşık 60 MHz Fmax ve pozitif
 WNS göstermeli.
 
 ---
@@ -98,34 +98,37 @@ Bu yükleme, kartın gücü kesilene kadar kalır.
 
 ## 5. Açılışta karşına çıkacaklar
 
-### 5.1 Logo (ilk 2 saniye)
+### 5.1 Açılış animasyonu (ilk 3–4 saniye)
 
-![Logo](docs/01_logo.png)
+Boot ROM, kartuşun ilk kaydı olan **launcher**'ı yükleyip başlatır (yarım saniyeden kısa sürer).
 
-- Ekranın üst ortasında sarı **RETRO KONSOL**, altında beyaz **6502 . NEXYS 4 DDR** yazar. Arka plan koyu
-  lacivert.
-- Ses çıkışından yükselen dört notalık kısa bir açılış melodisi gelir.
-- Yaklaşık 1,5 saniye sonra menüye geçer. Herhangi bir düğmeye basarsan beklemeden geçer.
+- Siyah ekranda bir halka halinde parıltılar ortaya doğru toplanır, dört notalık bir arpej çalar.
+- Beyaz bir parlamadan sonra büyük, gölgeli **RETRO KONSOL** yazısı belirir, altında
+  **6502 . NEXYS 4 DDR . FPGA** harf harf yazılır. Arka planda mor-mavi bir "aurora" yavaşça dalgalanır.
+- **A** ya da **Start** (klavyede **Space** / **Enter**) animasyonu atlar.
 - 7-segment göstergede sekiz tane `0` yanar. LED'ler sönüktür. Bunlar normal.
 
-### 5.2 Menü
+### 5.2 Oyun seçme ekranı
 
-![Menü](docs/02_menu.png)
+![Launcher](docs/08_launcher.png)
 
-- Üstte camgöbeği **RETRO KONSOL**, altında **OYUN SEC**.
-- Dört oyun ve oyuncu sayıları listelenir: **KRISTAL OCAK 1P**, **YILDIZ MUHAFIZI 1P**, **FITIL ARENASI 2-4P**,
-  **MAHALLE OLIMPIYATI 1-4P**.
-- Seçili oyunun solunda sarı **>** imleci durur.
-- Altta **YUKARI/ASAGI SEC  A/START OYNA** yazar.
-- Sağ alt köşede oyunların nereden okunduğu yazar: bitstream'in içindeki kartuş için **BRAM**, flash için
-  **FLASH** (8. bölüm).
+- Üst satırda **RETRO KONSOL**, sağda oyunların nereden okunduğu (**BRAM** ya da flash için **FLASH**, 8. bölüm)
+  ve oyun sayısı.
+- Ortada seçili oyunun adı büyük harflerle, altında oyuncu sayısı ve türü, iki satırlık açıklaması.
+- Altta oyun kartları yan yana durur; seçili kartın çerçevesi nabız gibi parlar ve etrafında iki parıltı döner.
+  Seçim değişince şerit yumuşakça kayar, başlık yeniden belirir. Ekranda küçük ışık zerrecikleri yukarı süzülür.
 
-**Menüde gezinmek:** Kartın yukarı/aşağı butonları (BTNU/BTND), klavyede W/S ya da ok tuşları, ya da NES kolu.
-İmleç her hareket ettiğinde kısa bir "tık" sesi gelir. Seçmek için **BTNC** (orta buton), klavyede **Sol Shift**
-veya **Space**, kolda **A** ya da **Start**. Oyun bir anda yüklenir ve başlar.
+**Gezinmek:** sol/sağ (ya da yukarı/aşağı): kartın butonları, klavyede A/D, W/S ya da ok tuşları, NES kolu.
+Her adımda kısa bir ses gelir. **Oynamak:** **A** ya da **Start** (BTNC, Sol Shift, Space, Enter). Ekran kararır,
+`YUKLENIYOR` yazar ve oyun başlar.
 
-**Her oyundan menüye dönüş:** **Select + Start** birlikte (klavyede **Tab + Space**). Kartın kırmızı
-**CPU RESET** butonu da her şeyi baştan başlatır (logo yeniden gelir).
+**Her oyundan geri dönüş:** klavyede **Esc**, kolda **Select + Start** birlikte. Seçme ekranı animasyonsuz
+gelir ve son oynanan oyun seçili durur. Kartın kırmızı **CPU RESET** butonu da aynı yere döner.
+
+**Eski metin menüsü ve UART monitörü:** Açılışta (ya da CPU RESET'e basarken) **Select**'i (Tab) basılı tut: boot
+ROM'un kendi menüsü ve logosu gelir; burada kartuştaki her şey listelenir ve UART monitörü (5.3) çalışır.
+
+![Boot ROM menüsü](docs/02_menu.png)
 
 ### 5.3 UART (isteğe bağlı ama ilk testte çok faydalı)
 
@@ -139,9 +142,9 @@ K65>
 ```
 
 Bu yazı geliyorsa işlemci, ROM ve UART çalışıyor demektir; ekran gelmese bile sorunun VGA tarafında olduğunu
-gösterir. Menüde bir oyun seçilince `LOADING` yazar.
+gösterir. Kartuştan her yükleme (önce launcher, sonra seçilen oyun) `LOADING` yazar.
 
-Menüdeyken basit bir monitör komut alır (yazdıkça ekrana yansır, Enter ile çalışır):
+Boot ROM menüsündeyken (Select ile açılış, 5.2) basit bir monitör komut alır (yazdıkça ekrana yansır, Enter ile çalışır):
 
 | Komut | Ne yapar | Örnek |
 | --- | --- | --- |
@@ -154,8 +157,69 @@ Menüdeyken basit bir monitör komut alır (yazdıkça ekrana yansır, Enter ile
 
 ## 6. Oyunlar
 
-Her oyunda bir başlık ekranı çıkar, **A** ya da **Start** ile başlar. Oyun içinde **Start** duraklatır,
-**Select + Start** menüye döner. Puan oyunun üst satırında ve 7-segment göstergenin sağ dört hanesinde görünür.
+Her oyunda bir başlık ekranı çıkar, **A** ya da **Start** ile başlar. Oyun içinde **Start** duraklatır.
+**Oyundan çıkmak:** klavyede **Esc**, kolda **Select + Start** her oyunda seçme ekranına döner. Puan oyunun üst satırında ve 7-segment göstergenin sağ dört hanesinde görünür.
+
+### Blok Yağmuru (1 oyuncu)
+
+![Blok Yağmuru](docs/09_blok.png)
+
+Yukarıdan düşen dört kareli yedi çeşit parçayı 10 x 20'lik kuyuya yerleştir; dolan sıralar parlayıp silinir,
+üsttekiler aşağı iner. Başlık ekranında başlangıç seviyesini sol/sağ ile seç (0–9).
+
+- Sol/sağ: kaydır (basılı tutunca hızlanır). **Aşağı**: hızlı düşür (her sıra 1 puan). **Yukarı**: anında bırak
+  (sıra başına 2 puan).
+- **A**: sağa, **B**: sola döndür (duvara yakınken parça biraz kayarak döner). Klavyede **X** sağa, **Z** sola
+  da döndürür (kolun A'sı Sol Shift, B'si Sol Ctrl'dir). **Select** (ya da **C**): parçayı "TUT" kutusuna koy /
+  oradakini al (her parçada bir kez). Select bırakıldığında çalışır, böylece Select + Start çıkışla karışmaz.
+- **Start** duraklatır; duraklatılmışken **Select** seçme ekranına döner.
+- Kesik çizgili **hayalet** parça, parçanın nereye ineceğini gösterir. Sağda sıradaki üç parça görünür.
+  Parçalar yedili karışık torbalardan gelir, bu yüzden hiçbir parça çok uzun süre gelmeden kalmaz.
+- Puan: 1 sıra 100, 2 sıra 300, 3 sıra 500, 4 sıra (**DORTLU!**, ekran sarsılır) 800, hepsi (seviye + 1) ile
+  çarpılır. Her 10 sırada seviye artar ve parçalar hızlanır; arka plandaki melodi de hızlanır.
+- Parçalar tepeye dayanınca **OYUN BITTI**. En iyi puan, kart kapanana kadar saklanır.
+
+### Tılsım (1 oyuncu, kart oyunu)
+
+![Tılsım](docs/11_tilsim.png)
+
+Poker elleriyle oynanan, her koşunun farklı geçtiği bir kart oyunu. Her koşunun dört harfli bir **tohumu**
+var (ör. `GRDT`): aynı tohum aynı kartları, aynı pazarları ve aynı bekçileri getirir. Arkadaşına tohumu söyle,
+aynı koşuyu o da denesin.
+
+- **Başlık ekranı:** yukarı/aşağı ile satır seç. **DESTE** satırında sol/sağ ile deste:
+  *KLASİK* (52 kart), *KOR* (ATEŞ tılsımıyla başlar), *KISA* (2-3-4 yok, 40 kart: kent ve ful kolay),
+  *ALTIN* (+6 altın, faiz sınırı 10), *İKİZ* (yalnız kupa ve maça, ikişer: renk kolay). Her destenin kart
+  arkası farklı renkte. **TOHUM** satırında sol/sağ harf seçer, A/B harfi değiştirir. **BAŞLA** gösterilen
+  tohumla, **YENİ TOHUMLA BAŞLA** rastgele bir tohumla başlatır.
+- **Yol:** 8 durak, her durakta üç kapı: **KÜÇÜK KAPI**, **BÜYÜK KAPI** ve **BEKÇİ**. Bekçinin bir laneti
+  vardır (ör. *SESSİZ*: atış yok, *SOLUK*: bir renk çip vermez, *YARIM*: çarpan yarıya iner).
+  Her kapıdan önce **durak haritası** gelir: üç kapının hedefi ve ödülü, bekçinin laneti ve el seviyeleri
+  tablosu. **A** kapıya girer; küçük ve büyük kapıda **B** kapıyı **atlar** ve yazılı **etiketi** verir
+  (+10 altın, bir el türüne parşömen, pazarda 3 bedava yenileme, pazarda yarı fiyat, sonraki kapıda +1 el ya
+  da hediye tılsım). Atlanan kapının altını ve pazarı yoktur.
+- **El:** 8 kart dağıtılır (vale, kız ve papazın kendi portreleri var). Sol/sağ ile kartı seç, **A** ile işaretle
+  (en çok 5). **Start** işaretlileri **OYNA**r, **Select** (bırakınca) onları **AT**ar ve yerine yenisini çeker. Her kapıda 4 el ve 3 atış hakkı var.
+  **B** sıralamayı değiştirir (sayıya / renge göre).
+- **Puan = ÇİP x ÇARPAN.** Elin türü (yüksek kart, çift, iki çift, üçlü, kent, renk, ful, kare, kent renk)
+  bir taban çip ve çarpan verir; elin parçası olan her kart kendi değeri kadar çip ekler (2–10 kendi sayısı,
+  J Q K 10, As 11). Puanlama adım adım gösterilir: kartların üstünde uçuşan sayılar, artan bir "tık" sesi.
+  **A**'yı basılı tutmak hızlandırır.
+- **Tılsımlar** (en çok 5, üst şeritte): çarpan ekleyen, çip ekleyen ya da çarpanı katlayan 24 tılsım var.
+  Bazıları büyür (*FİDAN*: her çiftli elde kalıcı +1 çarpan; *YANKI*: her kapıda x0,5 daha). Puanlamada etki eden
+  tılsımın adı sarı yanar. **Yukarı** ile tılsımlara geçip açıklamalarını okuyabilirsin.
+- **Pazar:** her kapıdan sonra altın kazanırsın (kalan her el +1, her 5 altın için +1 faiz). Pazarda iki tılsım
+  ve bir **parşömen** (bir el türünün seviyesini yükseltir) satılır. **A** al, **Select** yenile (her seferinde
+  pahalanır), **Yukarı** sonra **A** bir tılsımı yarı fiyatına sat, **Start** devam.
+
+![Tılsım pazarı](docs/10_tilsim_pazar.png)
+![Tılsım başlık ve deste](docs/12_tilsim_baslik.png)
+![Tılsım durak haritası](docs/13_tilsim_harita.png)
+
+- 4 elde hedefe ulaşamazsan **TILSIM BOZULDU**: ulaştığın durak, koşunun en iyi eli ve başa dönüş. 8. durağın
+  bekçisini geçersen **TILSIM KIRILDI!** ve hedefler katlanarak sonsuz devam eder.
+- Başlık ekranında **A** yeni rastgele bir tohumla başlatır, **Start** gösterilen tohumla. Yön tuşlarıyla
+  tohumun harflerini tek tek değiştirebilirsin.
 
 ### Kristal Ocak (1 oyuncu)
 
@@ -221,6 +285,7 @@ Her yarışmadan sonra puan tablosu gelir (birinci 4, ikinci 3, üçüncü 2, d�
 | A | Sol Shift, BTNC (orta buton) | Sağ Ctrl | A |
 | B | Sol Ctrl | Sağ Shift | B |
 | Select / Start | Tab / Space | Backspace / Enter | Select / Start |
+| Menüye dön | Esc | Esc | Select + Start |
 
 Kart butonları ve klavye, 1. oyuncunun kolunun yerine geçer, ikisi aynı anda da çalışır.
 
@@ -270,16 +335,19 @@ oyunları değiştirmek için yalnızca 1–3. adımlar yeterlidir.
 
 Sırayla dene ve her biri için ✓ ya da gördüğün farkı not al:
 
-- [ ] Programlamadan sonra logo ve açılış melodisi geliyor (5.1)
-- [ ] Serial Terminal'de `RETRO KONSOL BOOT ROM` ve `K65>` görünüyor (5.3)
-- [ ] Menüde dört oyun ve sağ altta `BRAM` var, imleç butonlarla oynuyor ve tıklıyor (5.2)
+- [ ] Programlamadan sonra parıltılı açılış animasyonu ve arpej geliyor (5.1)
+- [ ] Seçme ekranında altı oyun kartı var, sağ üstte `BRAM`; sol/sağ ile şerit kayıyor, başlık değişiyor (5.2)
+- [ ] Bir oyundan Select + Start ile dönünce animasyonsuz, aynı oyun seçili geliyor
+- [ ] Select basılıyken CPU RESET: boot ROM menüsü; Serial Terminal'de `RETRO KONSOL BOOT ROM` ve `K65>` (5.3)
 - [ ] Monitörde `W 8406 FF` yazınca alttaki 8 LED yanıyor
-- [ ] Klavye: W/S ile menüde gezinme; oyunda W+A+Sol Shift ile Yukarı+Sol+Sağ Ctrl aynı anda
+- [ ] Klavye: A/D ile seçme ekranında gezinme; oyunda W+A+Sol Shift ile Yukarı+Sol+Sağ Ctrl aynı anda
 - [ ] NES kolu: menüde gezinme, Fitil Arenası'nda her kolun kendi oyuncusu
 - [ ] Kristal Ocak: kazma, düşen kaya, kristal toplama, üst satırın kaymadan durması
 - [ ] Yıldız Muhafızı: ateş sesi, patlama, düşman ateşi
 - [ ] Fitil Arenası: 2–4 oyuncuyla bir maç
 - [ ] Mahalle Olimpiyatı: üç yarışma ve şampiyon ekranı
+- [ ] Blok Yağmuru: döndürme, tutma, sıra silme, dörtlüde ekran sarsıntısı, seviye artınca hızlanma
+- [ ] Tılsım: el oynama ve atma, puanlamanın adım adım gösterilmesi, kapı açılınca pazar, tılsım alıp satma
 - [ ] Flash'a yazıp JP1 QSPI'deyken güç verince menünün `FLASH` ile gelmesi (8. bölüm)
 
 ---
@@ -293,6 +361,8 @@ Sırayla dene ve her biri için ✓ ya da gördüğün farkı not al:
 | Ekran siyah, monitör "sinyal yok" diyor | VGA kablosu ve monitör girişi. Serial Terminal'de `RETRO KONSOL BOOT ROM` geliyorsa tasarım çalışıyor, sorun görüntü tarafında |
 | Ekran siyah, UART'ta da bir şey yok | CPU RESET'e bas. Hâlâ yoksa bitstream'in doğru yüklendiğinden emin ol (Messages). Bu, kartta ilk kez denenen bitstream olduğu için bildirilmesi gereken önemli bir bulgudur |
 | Görüntü kaymış, titriyor | Monitörün otomatik ayarını kullan; çözünürlük 640x480 @ 60 Hz |
+| Seçme ekranı yerine boot ROM menüsü geliyor | Açılışta Select (Tab) basılı mı, ya da bir NES kolunda Select takılı mı kalmış? Kartuş eski (launcher'sız) olabilir: `make -C sw` ve yeniden bitstream |
+| Sentez `bram: cannot open cart_10.mem` hatasıyla duruyor | Proje, kartuş 128 KB'a (32 blok) büyümeden önce oluşturulmuş: içinde yalnızca `cart_00…0f.mem` var. `vivado/create_project.tcl`'i yeniden çalıştır (2. bölüm) ya da Tcl Console'da `add_files ../sw/build/cart_10.mem` … `cart_1f.mem` |
 | Menüde `KARTUS BULUNAMADI` | `make -C sw` çalıştırılmadan bitstream üretilmiş olabilir. `make -C sw`, sonra yeniden Generate Bitstream |
 | Ses yok | Kulaklığı kartın ses jakına tak, sesi biraz aç. Açılış melodisi her resetten sonra çalar |
 | Klavye çalışmıyor, BUSY (sarı) LED yanıp sönüyor | PS/2 hatlarında FPGA'nın pull-up'ları yoksa PIC24 tuşları gönderemez. 20 Kasım'dan önceki bitstream'lerde bu eksikti: VivadoMac'i ve bitstream'i yeniden üret. Klavyeyi **USB HOST** portuna doğrudan tak (hub olmaz) |
@@ -305,7 +375,8 @@ Sırayla dene ve her biri için ✓ ya da gördüğün farkı not al:
 
 **Sanal kart (asıl tasarım):** VivadoMac'te Flow Navigator > **Virtual Board**. Sentezlenen tasarımın kendisi
 Verilator ile Mac'te çalışır: VGA ekranı, LED'ler, 7-segment, switch'ler, butonlar ve UART ekranda; ekrana
-tıklayınca Mac klavyesi kartın USB klavyesi olur (sağ ⌘ = Sağ Ctrl). Gerçek hızın yaklaşık onda biriyle çalışır,
+tıklayınca Mac klavyesi kartın USB klavyesi olur (sağ ⌘ = Sağ Ctrl). Pencerede hangi Mac tuşunun hangi konsol
+düğmesi olduğunu gösteren bir tablo var; basılı tuşlar orada yanar. Gerçek hızın yaklaşık onda biriyle çalışır,
 yani oyunlar ağır çekimde akar ama donanımın doğru çalışıp çalışmadığı birebir görülür. İlk açılışta sentez ve
 derleme bir iki dakika sürer. `tests/run_tests.sh vboard` aynı şeyi pencere açmadan dener.
 
@@ -317,14 +388,14 @@ Kart yokken oyunları Mac'te Python emülatörüyle çalıştırıp ekran görü
 python3 tools/emu6502.py run sw/build/boot.bin --cart sw/build/cart.bin --frames 150 --png menu.png
 ```
 
-`--pad1 "160:04,170:00,180:80"` gibi bir parametreyle belirli karelerde kol tuşu basılabilir (onaltılık:
+Açılışta launcher gelir (yaklaşık 50. karede seçme ekranı). `--pad1 "160:04,170:00,180:80"` gibi bir parametreyle belirli karelerde kol tuşu basılabilir (onaltılık:
 `80` A, `40` B, `20` Select, `10` Start, `08` yukarı, `04` aşağı, `02` sol, `01` sağ).
 
 ## 12. Testler
 
 ```sh
 tests/run_tests.sh          # hepsi (yaklaşık 10 dakika)
-tests/run_tests.sh sw       # yazılım: emülatörde menü ve dört oyunun senaryolu testleri, ekran görüntüleri sw/build/shots
+tests/run_tests.sh sw       # yazılım: emülatörde boot ROM, launcher ve altı oyunun senaryolu testleri, ekran görüntüleri sw/build/shots
 tests/run_tests.sh sim      # VHDL testbench'leri (GHDL)
 tests/run_tests.sh flow     # VivadoMac ile sentez, yerleştirme, bitstream
 ```
@@ -337,8 +408,8 @@ tests/run_tests.sh flow     # VivadoMac ile sentez, yerleştirme, bitstream
 | `hw/t65/` | T65 6502 çekirdeği (BSD benzeri lisans, `NOTICE.md`) |
 | `hw/sim/` | Testbench'ler ve simülasyon modelleri (Xilinx primitive'leri, SPI flash) |
 | `constr/` | Nexys 4 DDR pinleri |
-| `sw/` | 6502 yazılımı: `boot/` boot ROM, `lib/` C oyun kütüphanesi, `games/` dört oyun, `tests/` |
-| `tools/` | `emu6502.py`, `ppu_model.py`, `gfx.py` (metin çizimden karo/sprite), `font.py`, `mkcart.py` |
+| `sw/` | 6502 yazılımı: `boot/` boot ROM, `lib/` C oyun kütüphanesi (`bigtext.c`: büyük gölgeli başlık harfleri), `games/` launcher ve altı oyun, `tests/` |
+| `tools/` | `emu6502.py`, `ppu_model.py`, `gfx.py` (metin çizimden karo/sprite), `font.py`, `mkcart.py`; `art/` launcher, Blok Yağmuru ve Tılsım grafiklerini üreten betikler (`art.txt` dosyaları bunlardan üretilir), `art/preview.py` bir `art.txt`'yi PNG'ye döker |
 | `vivado/` | `create_project.tcl`, `build_bitstream.tcl`, `sources.tcl` |
 | `docs/` | Bu belgedeki ekran görüntüleri (emülatörden) |
 
@@ -347,9 +418,14 @@ tests/run_tests.sh flow     # VivadoMac ile sentez, yerleştirme, bitstream
 - Tek saat: 100 MHz osilatörden MMCM ile 25 MHz. İşlemci saat yetkilendirmesiyle 6,25 MHz'te (ya da 1,79 MHz)
   çalışır.
 - Bellek haritası: `$0000-$7FFF` RAM, `$8000-$8FFF` G/Ç, `$9000-$DFFF` oyun RAM'i, `$E000-$FFFF` boot ROM.
+  Oyunlar `$9000`'a yüklenir (en çok 20 KB); daha büyükleri (Tılsım, 25 KB) `$0400`'e yüklenir, değişkenleri
+  `$9000`'da durur (`sw/game_c_low.cfg`). Kartuş dizinindeki her kayıt kendi yükleme adresini taşır.
+  `$02E0-$02FF`: oyunlar arası küçük kayıt alanı (en iyi puanlar, launcher'ın son seçimi).
+- Kartuş: 128 KB (32 x 4 KB blok RAM), dizinde en çok 8 kayıt; ilk kayıt bayrağıyla launcher olabilir. Boot ROM
+  `$FFF0`'da bir giriş sunar: `A` = dizin sırası ile `JSR $FFF0` o oyunu yükleyip başlatır.
   Register listesi: `sw/include/konsol.inc` ve `hw/` içindeki her bloğun baş açıklaması.
 - PPU: 320x240, VGA 640x480 @ 60 Hz'te 2 kat büyütülmüş; 64x32 karo haritası ve kaydırma; 256 karo; 16x16'lık 64
   sprite (satır başına 16); 16 palet x 16 renk (4096 renkten); vblank NMI, raster IRQ, OAM DMA, çarpışma bayrakları.
 - APU: 2 kare dalga, üçgen, gürültü, sönümlenen zarf; açık-drenaj `AUD_PWM` üzerinden birinci dereceden
   delta-sigma çıkış.
-- Kaynak kullanımı: yaklaşık 2.900 LUT ve 31 blok RAM (XC7A100T'nin %5'i ve %23'ü).
+- Kaynak kullanımı: yaklaşık 3.000 LUT ve 45 blok RAM (XC7A100T'nin %5'i ve %33'ü).

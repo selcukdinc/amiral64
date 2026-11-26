@@ -67,7 +67,7 @@ px = lambda x, y: tuple(d[(y * 640 + x) * 3:(y * 640 + x) * 3 + 3])
 sys.exit(0 if px(112, 80) == (0, 0, 0) and px(304, 80) != (0, 0, 0) else 1)
 PY
   then
-    echo "PASS  virtual board: boot, menu by keyboard, Kristal Ocak played"; pass=$((pass+1))
+    echo "PASS  virtual board: boot, launcher by keyboard, Kristal Ocak played"; pass=$((pass+1))
   else
     echo "FAIL  virtual board (see $B/vboard.log)"; fail=$((fail+1))
   fi

@@ -75,9 +75,9 @@ out = bytes(k.uart_out)
 check("monitor W/D", k.ram[0x1234] == 0x5A and b"1230: 00 00 00 00 5A" in out, out[-120:])
 
 # a cartridge in the flash wins over the BRAM one
-k = run(Konsol(rom("boot.bin"), cart, flash=cart.replace(b"TEST OYUN A", b"FLASH OYUN A")), 150)
+k = run(Konsol(rom("boot.bin"), cart, flash=cart.replace(b"TEST OYUN A", b"FLSH OYUN A")), 150)
 txt = screen_text(k)
-check("flash cartridge preferred", "FLASH OYUN A" in txt and "FLASH" in txt, txt)
+check("flash cartridge preferred", "FLSH OYUN A" in txt and "FLASH" in txt, txt)
 k = run(Konsol(rom("boot.bin"), cart), 150)
 check("BRAM cartridge when the flash is empty", "TEST OYUN A" in screen_text(k) and "BRAM" in screen_text(k))
 
@@ -222,6 +222,215 @@ pts = [peek(k, S, "points", i) for i in range(2)]
 check("olimpiyat: all three events played", peek(k, S, "event_no") == 4, f"event {peek(k, S, 'event_no')}")
 check("olimpiyat: points awarded (2 players, 3 events)", 21 <= sum(pts) <= 24, f"points={pts}")
 check("olimpiyat: champion screen", "SAMPIYON" in screen_text(k))
+
+# ---------------------------------------------------------------- launcher (the real cartridge)
+full = rom("cart.bin")
+k = Konsol(rom("boot.bin"), full)
+run(k, 60, shot="launcher_splash.png")
+check("launcher: started by the boot ROM instead of the menu", k.test in (0xD0, 0xD1) and "OYUN SEC" not in screen_text(k),
+      f"test {k.test}")
+for _ in range(500):
+    run(k, 1)
+    if k.test == 0xD1: break
+run(k, 10, shot="launcher_home.png")
+txt = screen_text(k)
+check("launcher: home screen after the splash", k.test == 0xD1 and "MADENI KAZ" in txt and "6" in txt and "OYUN" in txt, txt)
+k.pads[0] = 0x01; run(k, 3); k.pads[0] = 0; run(k, 40, shot="launcher_blok.png")
+check("launcher: Right picks the next game", "DUSEN BLOKLARI" in screen_text(k), screen_text(k))
+k.pads[0] = 0x80; run(k, 3); k.pads[0] = 0
+for _ in range(120):
+    run(k, 1)
+    if k.test == 0xB0: break
+check("launcher: A loads the game through the boot ROM API", k.test == 0xB0, f"test {k.test}")
+check("launcher: remembers the choice for the way back", bytes(k.ram[0x2FC:0x2FF]) == b"KW\x01", bytes(k.ram[0x2FC:0x2FF]))
+run(k, 20)
+k.pads[0] = 0x30; run(k, 3); k.pads[0] = 0          # Select + Start: back to the menu = the launcher, warm
+for _ in range(200):
+    run(k, 1)
+    if k.test == 0xD1: break
+check("launcher: back from a game without the splash, same game chosen",
+      k.test == 0xD1 and "DUSEN BLOKLARI" in screen_text(k), screen_text(k))
+k = Konsol(rom("boot.bin"), full)
+k.pads[0] = 0x20                                    # Select held at power-up: the boot ROM menu
+run(k, 140); k.pads[0] = 0; run(k, 5)
+txt = screen_text(k)
+check("Select at power-up: the boot ROM menu lists the cartridge", "OYUN SEC" in txt and "TILSIM" in txt and "BLOK YAGMURU" in txt, txt)
+
+# ---------------------------------------------------------------- blok yagmuru
+k, S = load_game("blok")
+check("blok: fits in 20 KB", len(rom("game_blok.bin")) <= 0x5000)
+run(k, 40, shot="blok_title.png")
+check("blok: title screen", "BASLANGIC SEVIYESI" in screen_text(k), screen_text(k))
+hold(k, 0x10, 2)
+run(k, 30, shot="blok_play.png")
+check("blok: playfield", "SIRADAKI" in screen_text(k) and k.test == 0xB1)
+def key(k, code, frames=2):
+    k.keys[code >> 3] |= 1 << (code & 7); run(k, frames)
+    k.keys[code >> 3] &= ~(1 << (code & 7)); run(k, 2)
+k.wr(S["_cur"], 2); k.wr(S["_rot"], 0); k.wr(S["_px"], 3); k.wr(S["_py"], 4)   # a T piece in open space
+key(k, 0x22)                                        # X: turn right
+r1 = k.rd(S["_rot"])
+key(k, 0x1A); key(k, 0x1A)                          # Z twice: turn left twice
+check("blok: X / Z on the keyboard turn the piece", r1 == 1 and k.rd(S["_rot"]) == 3, f"rot {r1} -> {k.rd(S['_rot'])}")
+hold(k, 0x80, 2)                                    # A: turn right (pad)
+check("blok: A turns the piece", k.rd(S["_rot"]) == 0, f"rot {k.rd(S['_rot'])}")
+held0 = k.rd(S["_hold"])
+k.pads[0] = 0x20; run(k, 3)
+check("blok: Select does not hold while it is down", k.rd(S["_hold"]) == held0)
+k.pads[0] = 0; run(k, 3)
+check("blok: Select holds the piece when let go", k.rd(S["_hold"]) == 2 and held0 == 255, f"hold {held0} -> {k.rd(S['_hold'])}")
+for x in range(10):
+    for y in range(22): k.wr(S["_board"] + y * 10 + x, 0)
+# an I piece over a row with a 4-cell gap: a hard drop clears it
+BOARD = S["_board"]
+for x in (0, 1, 2, 7, 8, 9): k.wr(BOARD + 21 * 10 + x, 3)
+k.wr(S["_cur"], 0); k.wr(S["_rot"], 0); k.wr(S["_px"], 3); k.wr(S["_py"], 1)
+hold(k, 0x08, 2)                                    # Up: hard drop
+run(k, 40, shot="blok_clear.png")
+check("blok: a full row is cleared and scored", peek(k, S, "lines", size=2) == 1 and peek(k, S, "score", size=4) >= 100
+      and all(k.rd(BOARD + 21 * 10 + x) == 0 for x in range(10)),
+      f"lines {peek(k, S, 'lines', size=2)} score {peek(k, S, 'score', size=4)} row {[k.rd(BOARD + 210 + x) for x in range(10)]}")
+# pieces stack up to the top: game over
+for _ in range(40):
+    hold(k, 0x08, 2)
+    run(k, 30)
+    if "OYUN BITTI" in screen_text(k): break
+run(k, 70, shot="blok_over.png")
+check("blok: topping out ends the game", "OYUN BITTI" in screen_text(k), screen_text(k))
+
+# ---------------------------------------------------------------- tilsim
+import itertools
+from collections import Counter
+def tilsim_value(cards):
+    """the game's scoring without charms (hand level 1)"""
+    BC = [5, 12, 22, 30, 35, 40, 45, 70, 110]; BM = [1, 2, 2, 3, 4, 4, 5, 7, 9]
+    r = [c & 15 for c in cards]; s_ = [c >> 4 for c in cards]; cnt = Counter(r)
+    fl = len(cards) == 5 and len(set(s_)) == 1
+    st = len(cards) == 5 and len(cnt) == 5 and (max(r) - min(r) == 4 or set(r) == {12, 0, 1, 2, 3})
+    v = sorted(cnt.values(), reverse=True)
+    t = (8 if st and fl else 7 if v[0] == 4 else 6 if v[0] == 3 and len(v) > 1 and v[1] == 2 else 5 if fl else 4 if st
+         else 3 if v[0] == 3 else 2 if v[0] == 2 and len(v) > 1 and v[1] == 2 else 1 if v[0] == 2 else 0)
+    sc = cards if t in (4, 5, 6, 8) else [max(cards, key=lambda c: c & 15)] if t == 0 else [c for c in cards if cnt[c & 15] >= 2]
+    return (BC[t] + sum((c & 15) + 2 if (c & 15) < 9 else 11 if (c & 15) == 12 else 10 for c in sc)) * BM[t]
+
+def load_low(name):
+    k = Konsol(rom("boot.bin"))
+    g = rom(f"game_{name}.bin")
+    k.ram[0x400:0x400 + len(g)] = g
+    k.pc = 0x400
+    syms = {}
+    for l in open(os.path.join(B, f"game_{name}.lbl")):
+        _, addr, label = l.split()
+        syms[label.lstrip(".")] = int(addr, 16)
+    return k, syms
+
+k, S = load_low("tilsim")
+check("tilsim: fits below $7C00 (loads at $0400)", len(rom("game_tilsim.bin")) <= 0x7800)
+run(k, 70, shot="tilsim_title.png")
+check("tilsim: title with the seed", "KADERIN KARTLARI" in screen_text(k) and "TOHUM" in screen_text(k), screen_text(k))
+def tilsim_enter(k):
+    """from the stop's map into the gate"""
+    for _ in range(300):
+        run(k, 1)
+        if k.test == 0xE3: break
+    run(k, 20)
+    hold(k, 0x80, 2)
+    for _ in range(200):
+        run(k, 1)
+        if k.test == 0xE1: break
+    run(k, 40)
+hold(k, 0x10, 2)                                    # Start: play the shown seed with the classic deck
+for _ in range(300):
+    run(k, 1)
+    if k.test == 0xE3: break
+run(k, 30, shot="tilsim_map.png")
+check("tilsim: the stop's map shows the gates and the hand levels",
+      "SIRADAKI KAPI" in screen_text(k) and "EL SEVIYELERI" in screen_text(k), screen_text(k))
+hold(k, 0x80, 2)
+for _ in range(200):
+    run(k, 1)
+    if k.test == 0xE1: break
+run(k, 40)
+hand_of = lambda: [k.rd(S["_hand"] + i) for i in range(k.rd(S["_hand_n"]))]
+first = hand_of()
+check("tilsim: 8 cards dealt, sorted by rank", len(first) == 8 and [c & 15 for c in first] == sorted([c & 15 for c in first], reverse=True),
+      [hex(c) for c in first])
+# the same seed deals the same hand
+k2, _ = load_low("tilsim"); run(k2, 70); hold(k2, 0x10, 2); tilsim_enter(k2)
+check("tilsim: the same seed deals the same cards", [k2.rd(S["_hand"] + i) for i in range(8)] == first)
+def best(hand):
+    b = (0, 0)
+    for n in range(1, 6):
+        for comb in itertools.combinations(range(len(hand)), n):
+            v = tilsim_value([hand[i] for i in comb])
+            if v > b[0]: b = (v, sum(1 << i for i in comb))
+    return b
+score = lambda: peek(k, S, "score", size=4)
+gates = 0
+shop_seen = False
+for hand_no in range(30):
+    v, m = best(hand_of())
+    if hand_no and v < 90 and k.rd(S["_discards_left"]):
+        # a weak hand: throw away up to 5 low cards that are not in a pair (Select acts when let go)
+        h = hand_of(); cnt = Counter(c & 15 for c in h)
+        out = sorted([i for i, c in enumerate(h) if cnt[c & 15] < 2], key=lambda i: h[i] & 15)[:5]
+        if out:
+            k.wr(S["_selmask"], sum(1 << i for i in out))
+            hold(k, 0x20, 2); run(k, 20)
+            continue
+    before = score()
+    k.wr(S["_selmask"], m)
+    hold(k, 0x10, 2)
+    k.pads[0] = 0x80                                # hold A: fast scoring
+    for _ in range(900):
+        run(k, 1)
+        if k.test == 0xE2 or (score() - before == v and "KART SEC" in screen_text(k)): break
+    k.pads[0] = 0
+    if hand_no == 0:
+        run(k, 5, shot="tilsim_scored.png")
+        check("tilsim: a hand scores chips x mult like the rules say", score() - before == v, f"got {score() - before}, want {v}")
+    if k.test == 0xE2:
+        gates += 1
+        run(k, 160, shot="tilsim_shop.png")
+        if not shop_seen:
+            shop_seen = True
+            check("tilsim: the shop opens after a gate", "PAZAR" in screen_text(k) and "ALTIN" in screen_text(k), screen_text(k))
+            n0 = k.rd(S["_ncharm"]); g0 = k.rd(S["_gold"])
+            hold(k, 0x80, 2); run(k, 10)
+            check("tilsim: buying a charm costs gold", k.rd(S["_ncharm"]) == n0 + 1 and k.rd(S["_gold"]) < g0,
+                  f"charms {k.rd(S['_ncharm'])} gold {g0}->{k.rd(S['_gold'])}")
+        hold(k, 0x10, 2)
+        if gates == 2: break
+        tilsim_enter(k)
+    run(k, 30)
+check("tilsim: two gates opened by good play", gates == 2, f"gates {gates}")
+
+# skipping a gate gives its tag; the short deck has no 2 3 4
+k, S = load_low("tilsim")
+run(k, 70)
+hold(k, 0x01, 2); hold(k, 0x01, 2)                  # deck: KLASIK -> KOR -> KISA
+run(k, 5, shot="tilsim_title.png")
+check("tilsim: deck chosen on the title", k.rd(S["_deck_kind"]) == 2 and "KISA" in screen_text(k), screen_text(k))
+hold(k, 0x10, 2)
+for _ in range(300):
+    run(k, 1)
+    if k.test == 0xE3: break
+run(k, 30)
+kind, arg = k.rd(S["_tag_kind"]), k.rd(S["_tag_arg"])
+gold0, lv0 = k.rd(S["_gold"]), k.rd(S["_hlevel"] + arg)
+hold(k, 0x40, 2)                                    # B: skip the small gate
+for _ in range(100):
+    run(k, 1)
+    if k.rd(S["_gate"]) == 1: break
+ok = {0: k.rd(S["_gold"]) == gold0 + 10, 1: k.rd(S["_hlevel"] + arg) == lv0 + 1, 2: k.rd(S["_free_rerolls"]) == 3 if "_free_rerolls" in S else True,
+      3: True, 4: True, 5: k.rd(S["_ncharm"]) == 1}[kind]
+check("tilsim: skipping the small gate gives its tag and moves on", k.rd(S["_gate"]) == 1 and ok, f"tag {kind} gate {k.rd(S['_gate'])}")
+tilsim_enter(k)
+check("tilsim: the short deck has 40 cards without 2 3 4", k.rd(S["_deck_n"]) == 40 and all((c & 15) >= 3 for c in hand_of()),
+      [hex(c) for c in hand_of()])
+k.keys[0x76 >> 3] |= 1 << (0x76 & 7)                # Esc: back to the menu (the boot ROM resets)
+run(k, 3)
+check("tilsim: Esc leaves the game (the boot ROM runs again)", k.pc >= 0xE000, f"pc {k.pc:04X}")
 
 # no cartridge
 k = run(Konsol(rom("boot.bin"), b""), 150)
