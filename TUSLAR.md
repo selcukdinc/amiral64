@@ -74,6 +74,17 @@ Kurulum ekranında: yukarı / aşağı oyuncu sayısı, **Space / Enter** başla
 | Shift | Ateş |
 | Space / Enter | Başlat |
 
+### Koridor 64 (birinci şahıs nişancı)
+| Tuş | İş |
+| --- | --- |
+| Ok yukarı / aşağı (W / S) | İleri / geri yürü |
+| Ok sol / sağ (A / D) | Dön |
+| Ctrl + ok sol / sağ | Yana kay |
+| Shift | Ateş et (basılı tut: seri) |
+| Kapıya doğru yürü | Kapı açılır |
+| Space | Duraklat |
+| Esc | Menüye dön |
+
 ### Mahalle Olimpiyatı (sırayla 1–4 oyuncu)
 | Yarışma | Tuş |
 | --- | --- |

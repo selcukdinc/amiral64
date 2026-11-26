@@ -242,7 +242,7 @@ for _ in range(500):
     if k.test == 0xD1: break
 run(k, 10, shot="launcher_home.png")
 txt = screen_text(k)
-check("launcher: home screen after the splash", k.test == 0xD1 and "MADENI KAZ" in txt and "6" in txt and "OYUN" in txt, txt)
+check("launcher: home screen after the splash", k.test == 0xD1 and "MADENI KAZ" in txt and "7" in txt and "OYUN" in txt, txt)
 k.pads[0] = 0x01; run(k, 3); k.pads[0] = 0; run(k, 40, shot="launcher_blok.png")
 check("launcher: Right picks the next game", "DUSEN BLOKLARI" in screen_text(k), screen_text(k))
 k.pads[0] = 0x80; run(k, 3); k.pads[0] = 0
@@ -439,6 +439,48 @@ check("tilsim: the short deck has 40 cards without 2 3 4", k.rd(S["_deck_n"]) ==
 k.keys[0x76 >> 3] |= 1 << (0x76 & 7)                # Esc: back to the menu (the boot ROM resets)
 run(k, 3)
 check("tilsim: Esc leaves the game (the boot ROM runs again)", k.pc >= 0xE000, f"pc {k.pc:04X}")
+
+# ---------------------------------------------------------------- koridor 64
+k, S = load_low("koridor")
+check("koridor: fits below $7C00 (loads at $0400)", len(rom("game_koridor.bin")) <= 0x7800)
+run(k, 60, shot="koridor_title.png")
+check("koridor: title names the keys", "SHIFT" in screen_text(k) and "OKLAR" in screen_text(k), screen_text(k))
+hold(k, 0x10, 2); run(k, 20, shot="koridor_play.png")
+check("koridor: level 1 with its HUD", "DEPO" in screen_text(k) and "MERMI" in screen_text(k), screen_text(k))
+# the view is drawn: wall tiles (96..223) fill the middle row of the view
+mid = [k.ppu.vram[0x4000 + 2 * (12 * 64 + c)] for c in range(40)]
+check("koridor: walls in the view", all(96 <= t < 224 for t in mid), mid)
+def setp(x, y, a):
+    for name, v in (("px", int(x * 256)), ("py", int(y * 256)), ("ang", a)):
+        k.wr(S["_" + name], v & 255); k.wr(S["_" + name] + 1, v >> 8)
+f0 = k.rd(S["_frames_drawn"])
+k.pads[0] = 0x01; run(k, 120); k.pads[0] = 0
+fps = (k.rd(S["_frames_drawn"]) - f0) & 255
+check("koridor: at least 20 frames a second while turning", fps >= 40, f"{fps} frames in 2 s")
+run(k, 10)                                          # (the game still holds the last pad state for a frame)
+setp(5.3, 2.5, 0)                                   # a demon straight ahead in the first room
+for name, v in (("ex", 0x0780), ("ey", 0x0280)):
+    k.wr(S["_" + name], v & 255); k.wr(S["_" + name] + 1, v >> 8)
+run(k, 6, shot="koridor_demon.png")
+oam = [k.rd(0x300 + 4 * i + 2) for i in range(64) if k.rd(0x300 + 4 * i) < 240]
+check("koridor: the demon is drawn as sprites", len(oam) > 8, oam)
+for _ in range(6):
+    if k.rd(S["_kills"]): break
+    k.pads[0] = 0x80; run(k, 4); k.pads[0] = 0; run(k, 14)
+check("koridor: shooting the demon kills it", k.rd(S["_kills"]) == 1 and k.rd(S["_ammo"]) < 30,
+      f"kills {k.rd(S['_kills'])} ammo {k.rd(S['_ammo'])}")
+setp(2.5, 4.6, 256)                                 # walk south into the door at (2,6)
+k.pads[0] = 0x08; run(k, 40); k.pads[0] = 0; run(k, 4)
+check("koridor: walking into a door opens it", k.rd(S["_map"] + 6 * 32 + 2) == 0)
+check("koridor: walls stop the player", k.rd(S["_py"] + 1) < 9)
+setp(17.5, 10.6, 256)                               # the exit portal at (17,11)
+k.pads[0] = 0x08; run(k, 30); k.pads[0] = 0; run(k, 30, shot="koridor_exit.png")
+check("koridor: the portal ends the level", "BOLUM BITTI" not in screen_text(k) and k.rd(S["_won"]) == 1, screen_text(k))
+hold(k, 0x10, 4); run(k, 40)
+check("koridor: level 2 follows", k.rd(S["_level"]) == 2 and "REAKTOR" in screen_text(k), screen_text(k))
+k.keys[0x76 >> 3] |= 1 << (0x76 & 7)                # Esc: back to the menu
+run(k, 3)
+check("koridor: Esc leaves the game", k.pc >= 0xE000, f"pc {k.pc:04X}")
 
 # no cartridge
 k = run(Konsol(rom("boot.bin"), b""), 150)

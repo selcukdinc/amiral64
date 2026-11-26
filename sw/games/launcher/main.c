@@ -40,7 +40,7 @@ static unsigned char title_fade;
 void clear_rows(unsigned char y, unsigned char h);
 
 /* ---------------------------------------------------------------- text for each icon */
-static const char *const desc1[7] = {
+static const char *const desc1[8] = {
     "KARTUSTAKI BIR OYUN",
     "MADENI KAZ, KRISTALLERI TOPLA.",
     "UZAYDA KAYAN BIR NISANCI OYUNU.",
@@ -48,8 +48,9 @@ static const char *const desc1[7] = {
     "KOSU, UZUN ATLAMA VE REFLEKS:",
     "DUSEN BLOKLARI YERLESTIR,",
     "POKER ELLERI VE TILSIMLAR:",
+    "USSUN KORIDORLARINDA GOLGE AVI.",
 };
-static const char *const desc2[7] = {
+static const char *const desc2[8] = {
     "",
     "DUSEN KAYALARA DIKKAT ET!",
     "DALGALARI ATLAT, SKORU KATLA.",
@@ -57,12 +58,13 @@ static const char *const desc2[7] = {
     "MAHALLENIN SAMPIYONU KIM?",
     "SIRALARI TAMAMLA, HIZA DAYAN.",
     "HER TOHUMDA BASKA BIR KADER.",
+    "BIRINCI SAHIS, GERCEK ZAMANLI 3B!",
 };
-static const char *const genre[7] = {
-    "OYUN", "MACERA", "AKSIYON", "PARTI", "PARTI", "BULMACA", "KART  ROGUELIKE",
+static const char *const genre[8] = {
+    "OYUN", "MACERA", "AKSIYON", "PARTI", "PARTI", "BULMACA", "KART  ROGUELIKE", "3B NISANCI",
 };
-static const unsigned char icon_tile[7] = { T_icon0_0, T_icon1_0, T_icon2_0, T_icon3_0, T_icon4_0, T_icon5_0, T_icon6_0 };
-static const unsigned *const icon_pal[7] = { pal_icon0, pal_icon1, pal_icon2, pal_icon3, pal_icon4, pal_icon5, pal_icon6 };
+static const unsigned char icon_tile[8] = { T_icon0_0, T_icon1_0, T_icon2_0, T_icon3_0, T_icon4_0, T_icon5_0, T_icon6_0, T_icon7_0 };
+static const unsigned *const icon_pal[8] = { pal_icon0, pal_icon1, pal_icon2, pal_icon3, pal_icon4, pal_icon5, pal_icon6, pal_icon7 };
 
 /* ---------------------------------------------------------------- cartridge */
 static unsigned char cart_byte(void) {
@@ -83,7 +85,7 @@ static void read_directory(void) {
         for (k = 0; k < 20; ++k) names[ngames][k] = dir_raw[k];
         names[ngames][20] = 0;
         pmin[ngames] = dir_raw[27]; pmax[ngames] = dir_raw[28];
-        icon[ngames] = dir_raw[30] < 7 ? dir_raw[30] : 0;
+        icon[ngames] = dir_raw[30] < 8 ? dir_raw[30] : 0;
         index[ngames] = i;
         ++ngames;
     }
@@ -93,7 +95,8 @@ static void read_directory(void) {
  * glyph slots: tiles 0-31 and the tiles after the art */
 /* (a constant table: cc65 2.18 -O miscompiled the loop that computed it, using the wrong stack offset) */
 #define SLOT_HI (TILE_BASE + TILE_COUNT)
-static const unsigned char slots[13] = { 0, 4, 8, 12, 16, 20, 24, 28, SLOT_HI, SLOT_HI + 4, SLOT_HI + 8, SLOT_HI + 12, SLOT_HI + 16 };
+/* (10 slots: the most different letters in a title, MAHALLE OLIMPIYATI, BLOK YAGMURU, is 10) */
+static const unsigned char slots[10] = { 0, 4, 8, 12, 16, 20, 24, 28, SLOT_HI, SLOT_HI + 4 };
 static unsigned char str_len(const char *s) { return big_len(s); }
 
 static void big_title(unsigned char y, const char *s) {
@@ -377,7 +380,7 @@ void main(void) {
     k_init();
     k_esc_menu = 0;                /* Esc here would only restart the launcher */
     PPU_CTRL = 0;
-    big_init(slots, 13, PAL_TITLE);
+    big_init(slots, 10, PAL_TITLE);
     k_vcopy(TILE_BASE * 32, tiles_data, sizeof(tiles_data));
     k_vcopy(0x2000, sprites_data, sizeof(sprites_data));
     k_palette(PAL_BG, pal_bg, 16);

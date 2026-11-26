@@ -137,7 +137,24 @@ def icon_tilsim():
     c.set(16, 22, 9); c.set(16, 23, 8)
     return ["000", "102", "315", "53a", "fff", "e22", "111", "223", "fc2", "4cf", "000"], c
 
-icons = [icon_generic, icon_kristal, icon_yildiz, icon_fitil, icon_olimpiyat, icon_blok, icon_tilsim]
+def icon_koridor():
+    """a corridor in perspective, a demon's eyes at its end and the gun at the bottom"""
+    c = Canvas(32, 32)
+    c.rect(0, 0, 31, 31, 1)                                     # ceiling
+    c.poly([(0, 31), (31, 31), (20, 18), (11, 18)], 2)          # floor
+    c.poly([(0, 0), (11, 11), (11, 18), (0, 31)], 3)            # left wall
+    c.poly([(31, 0), (20, 11), (20, 18), (31, 31)], 4)          # right wall
+    c.rect(11, 11, 20, 18, 5)                                   # far wall
+    for x in (4, 8):
+        c.line(x, x, x, 31 - x, 4)
+    for x in (27, 23):
+        c.line(x, 31 - x, x, x, 3)
+    c.disc(14, 14, 1.1, 6); c.disc(17.5, 14, 1.1, 6)            # eyes in the dark
+    c.poly([(13, 31), (15, 24), (17, 24), (19, 31)], 7)         # gun
+    c.rect(15, 22, 16, 25, 8); c.set(15, 21, 6); c.set(16, 21, 6)
+    return ["000", "112", "322", "556", "445", "213", "fe4", "889", "bbc", "000"], c
+
+icons = [icon_generic, icon_kristal, icon_yildiz, icon_fitil, icon_olimpiyat, icon_blok, icon_tilsim, icon_koridor]
 for i, f in enumerate(icons):
     cols, cv = f()
     out.append(pal(f"icon{i}", (cols + ["000"] * 16)[:16]))

@@ -21,11 +21,15 @@ $(B)/knmi.o: lib/knmi.s include/konsol.inc | $(B)
 $(B)/konsol.o: lib/konsol.c lib/konsol.h $(B)/font.h | $(B)
 	$(CC65) -O -t none -I lib -I $(B) -o $(B)/konsol.s $<
 	$(CA65) -o $@ $(B)/konsol.s
+# Koridor 64 makes its wall tiles at 96..223 itself: its art starts at tile 208 (the 16 source tiles)
+$(B)/koridor/art.h: games/koridor/art.txt ../tools/gfx.py
+	mkdir -p $(dir $@)
+	python3 ../tools/gfx.py $< $@ --tile-base 208
 $(B)/%/art.h: games/%/art.txt ../tools/gfx.py
 	mkdir -p $(dir $@)
 	python3 ../tools/gfx.py $< $@
 $(B)/%/main.o: games/%/main.c lib/konsol.h $(B)/%/art.h $(B)/font.h
-	$(CC65) -O -t none -I lib -I $(B)/$* -I $(B) -o $(B)/$*/main.s $<
+	$(CC65) -O -t none -I lib -I games/$* -I $(B)/$* -I $(B) -o $(B)/$*/main.s $<
 	$(CA65) -o $@ $(B)/$*/main.s
 # optional library parts (linked only into the games that use them)
 $(B)/bigtext.o: lib/bigtext.c lib/bigtext.h lib/konsol.h | $(B)
@@ -34,13 +38,20 @@ $(B)/bigtext.o: lib/bigtext.c lib/bigtext.h lib/konsol.h | $(B)
 $(B)/konsolx.lib: $(B)/bigtext.o
 	rm -f $@; ar65 a $@ $^
 # games bigger than 20 KB load at $0400 instead of $9000 (game_c_low.cfg; the cartridge entry says where)
-LOW_GAMES = tilsim
-$(B)/game_%.bin: $(B)/%/main.o $(LIBOBJ) $(B)/konsolx.lib game_c.cfg game_c_low.cfg
-	$(LD65) -C $(if $(filter $*,$(LOW_GAMES)),game_c_low.cfg,game_c.cfg) -o $@ -Ln $(B)/game_$*.lbl -m $(B)/game_$*.map $(LIBOBJ) $< $(B)/konsolx.lib $(NONELIB)
+LOW_GAMES = tilsim koridor
+# extra assembly parts of a game: sw/games/<name>/*.s
+$(B)/koridor/%.o: games/koridor/%.s | $(B)
+	mkdir -p $(dir $@)
+	$(CA65) -o $@ $<
+GAME_ASM_koridor = $(B)/koridor/blit.o $(B)/koridor/render.o $(B)/koridor/tables.o
+$(B)/koridor/main.o: games/koridor/tables.h
+.SECONDEXPANSION:
+$(B)/game_%.bin: $(B)/%/main.o $$(GAME_ASM_$$*) $(LIBOBJ) $(B)/konsolx.lib game_c.cfg game_c_low.cfg
+	$(LD65) -C $(if $(filter $*,$(LOW_GAMES)),game_c_low.cfg,game_c.cfg) -o $@ -Ln $(B)/game_$*.lbl -m $(B)/game_$*.map $(LIBOBJ) $< $(GAME_ASM_$*) $(B)/konsolx.lib $(NONELIB)
 
 # Games on the cartridge: NAME:players:binary[:icon[:load address, hex]] ('*' = the launcher, started by the boot ROM)
-CART_GAMES = "*KONSOL:1:$(B)/game_launcher.bin" "KRISTAL OCAK:1:$(B)/game_kristal.bin:1" "BLOK YAGMURU:1:$(B)/game_blok.bin:5" "TILSIM:1:$(B)/game_tilsim.bin:6:0400" "YILDIZ MUHAFIZI:1:$(B)/game_yildiz.bin:2" "FITIL ARENASI:2-4:$(B)/game_fitil.bin:3" "MAHALLE OLIMPIYATI:1-4:$(B)/game_olimpiyat.bin:4"
-CART_BINS = $(B)/game_launcher.bin $(B)/game_kristal.bin $(B)/game_blok.bin $(B)/game_tilsim.bin $(B)/game_yildiz.bin $(B)/game_fitil.bin $(B)/game_olimpiyat.bin
+CART_GAMES = "*KONSOL:1:$(B)/game_launcher.bin" "KRISTAL OCAK:1:$(B)/game_kristal.bin:1" "BLOK YAGMURU:1:$(B)/game_blok.bin:5" "TILSIM:1:$(B)/game_tilsim.bin:6:0400" "YILDIZ MUHAFIZI:1:$(B)/game_yildiz.bin:2" "FITIL ARENASI:2-4:$(B)/game_fitil.bin:3" "MAHALLE OLIMPIYATI:1-4:$(B)/game_olimpiyat.bin:4" "KORIDOR 64:1:$(B)/game_koridor.bin:7:0400"
+CART_BINS = $(B)/game_launcher.bin $(B)/game_kristal.bin $(B)/game_blok.bin $(B)/game_tilsim.bin $(B)/game_yildiz.bin $(B)/game_fitil.bin $(B)/game_olimpiyat.bin $(B)/game_koridor.bin
 # test cartridge (menu tests, tb_boot): two tiny games that report on SYS_TEST
 TEST_GAMES = "TEST OYUN A:1:$(B)/gametest_A.bin" "TEST OYUN B:2-4:$(B)/gametest_B.bin"
 TEST_BINS = $(B)/gametest_A.bin $(B)/gametest_B.bin

@@ -3,7 +3,7 @@
 Digilent Nexys 4 DDR kartı için 6502 işlemcili bir oyun konsolu. Tamamı VHDL ile yazıldı ve macOS'ta
 VivadoMac'in açık kaynak akışıyla (GHDL, yosys, nextpnr-xilinx, openFPGALoader) derleniyor. İçinde T65 işlemci,
 karo ve sprite tabanlı bir görüntü birimi (PPU), dört kanallı bir ses birimi (APU), klavye, dört NES/SNES kolu,
-UART, animasyonlu bir açılış ve oyun seçme ekranı (launcher) ve kartuşta altı oyun var.
+UART, animasyonlu bir açılış ve oyun seçme ekranı (launcher) ve kartuşta yedi oyun var.
 
 Bu belge, projeyi ilk kez karta yükleyecek ve test edecek kişi için yazıldı: her adımda ne yapacağını ve
 karşısına ne çıkacağını anlatıyor.
@@ -43,7 +43,7 @@ Terminalde `amiral64` klasöründe:
 make -C sw
 ```
 
-Bu komut boot ROM'u, launcher'ı, altı oyunu ve kartuşu (128 KB) derler. Bitince `sw/build/` klasöründe
+Bu komut boot ROM'u, launcher'ı, yedi oyunu ve kartuşu (128 KB) derler. Bitince `sw/build/` klasöründe
 `boot.mem`, `cart_00.mem` … `cart_1f.mem` ve `cart.bin` dosyaları olur. "Warning: 'sprites_data' is defined but never used" gibi
 uyarılar normaldir.
 
@@ -302,17 +302,47 @@ oyuncu kendi kolunu kullanır; 1. ve 2. oyuncu klavyeyi kullanabilir. Oyuncular 
 
 ![Mahalle Olimpiyatı](docs/06_olimpiyat.png)
 
-Oyuncu sayısını seç, sonra üç yarışma sırayla oynanır. Her turda ekranda `OYUNCU n HAZIR: A` yazar: o oyuncu
-kendi kolunun ya da 1. kolun **A**'sına basar.
+Oyuncu sayısını seç, sonra üç yarışma sırayla oynanır. Her turda ekranda `OYUNCU n HAZIR: SHIFT` yazar: o oyuncu
+kendi **Shift**'ine (kolda A) basar.
 
-1. **KOSU 100 M**: 3-2-1 geri sayımından sonra **A** ve **B**'ye sırayla, olabildiğince hızlı bas. Süre sağ üstte.
-2. **UZUN ATLAMA**: A-B ile koş, kırmızı çizgiye gelmeden **yukarı** ile atla. Çizgiye ne kadar yakın atlarsan o
+1. **KOSU 100 M**: 3-2-1 geri sayımından sonra **Shift** ve **Ctrl**'e (kolda A ve B) sırayla, olabildiğince hızlı bas. Süre sağ üstte.
+2. **UZUN ATLAMA**: Shift-Ctrl ile koş, kırmızı çizgiye gelmeden **yukarı** ile atla. Çizgiye ne kadar yakın atlarsan o
    kadar uzağa gidersin; çizgiyi geçersen **FAUL**. İki deneme, iyisi sayılır.
-3. **REFLEKS**: `HAZIR...` yazısından sonra bekle; arka plan kırmızı olup `SIMDI!` yazınca hemen **A**'ya bas.
+3. **REFLEKS**: `HAZIR...` yazısından sonra bekle; arka plan kırmızı olup `SIMDI!` yazınca hemen **Shift**'e bas.
    Erken basmak faul sayılır. Süre milisaniye olarak yazar.
 
 Her yarışmadan sonra puan tablosu gelir (birinci 4, ikinci 3, üçüncü 2, dördüncü 1 puan). Sonunda
 `SAMPIYON: OYUNCU n`.
+
+### Koridor 64 (1 oyuncu, birinci şahıs nişancı)
+
+![Koridor 64](docs/14_koridor.png)
+
+90'ların koridor nişancılarının havasında, gerçek zamanlı 3B bir oyun: üssün koridorlarını **gölgeler** basmış.
+Onları temizle, **yeşil portala** ulaş. İki bölüm var: **DEPO** ve **REAKTOR**.
+
+| Tuş | İş |
+| --- | --- |
+| Ok yukarı / aşağı (W / S) | İleri / geri yürü |
+| Ok sol / sağ (A / D) | Dön |
+| **Ctrl** + sol / sağ | Yana kay |
+| **Shift** | Ateş et (basılı tutunca seri) |
+| Kapıya doğru yürü | Sarı kapı açılır |
+| Space | Duraklat |
+| Esc | Menüye dön |
+
+- Kırmızı artılı kutu **+25 can**, sarı fişekler **+12 mermi**. Gölgeler yaklaşınca pençe atar; ekran kırmızı
+  yanıp söner. Can sıfırlanırsa bölüm baştan başlar.
+- Alttaki çubukta **CAN**, **MERMI** ve **LES** (öldürülen / toplam gölge).
+- **Nasıl çalışıyor:** 6502, her karede 40 ışın gönderir (her 8 piksellik sütun için bir ışın, 8.8 sabit
+  noktalı DDA, assembly: `sw/games/koridor/render.s`). Duvarlar karolarla çizilir: her doku sütunu için bir tam
+  karo ve duvarın k piksel aşağıdan başladığı 7 karo (oyun açılırken üretilir); görüntünün alt yarısı aynı
+  karoların dikey çevrilmişi, zeminin renkleri ayrı paletlerde. Uzaklık ve duvarın yönü gölgelendirmeyi 4
+  palet seviyesiyle yapar. Bitmiş görüntü (22 satır x 40 karo) vblank başlar başlamaz tile map'e kopyalanır;
+  kopya ışından hızlı olduğu için yırtılma olmaz. Düşmanlar ve eşyalar 16/32/64 piksellik sprite'lardır
+  (64'lük, 32'lik çizimin oyun açılırken iki katına büyütülmüşü); her 16 piksellik sütunu, o sütundaki
+  duvardan uzaktaysa gizlenir. Hız saniyede yaklaşık 25–30 kare.
+- Grafikler ve tablolar `tools/art/koridor_art.py` ile üretilir (`art.txt`, `tables.s`, `tables.h`).
 
 ---
 
@@ -458,7 +488,7 @@ tests/run_tests.sh flow     # VivadoMac ile sentez, yerleştirme, bitstream
 | `hw/sim/` | Testbench'ler ve simülasyon modelleri (Xilinx primitive'leri, SPI flash) |
 | `constr/` | Nexys 4 DDR pinleri |
 | `sw/` | 6502 yazılımı: `boot/` boot ROM, `lib/` C oyun kütüphanesi (`bigtext.c`: büyük gölgeli başlık harfleri), `games/` launcher ve altı oyun, `tests/` |
-| `tools/` | `emu6502.py`, `ppu_model.py`, `gfx.py` (metin çizimden karo/sprite), `font.py`, `mkcart.py`; `art/` launcher, Blok Yağmuru ve Tılsım grafiklerini üreten betikler (`art.txt` dosyaları bunlardan üretilir), `art/preview.py` bir `art.txt`'yi PNG'ye döker |
+| `tools/` | `emu6502.py`, `ppu_model.py`, `gfx.py` (metin çizimden karo/sprite), `font.py`, `mkcart.py`; `art/` launcher, Blok Yağmuru, Tılsım, Fitil Arenası ve Koridor 64 grafiklerini (Koridor 64'ün açı ve uzaklık tablolarını da) üreten betikler (`art.txt` dosyaları bunlardan üretilir), `art/preview.py` bir `art.txt`'yi PNG'ye döker |
 | `vivado/` | `create_project.tcl`, `build_bitstream.tcl`, `sources.tcl` |
 | `docs/` | Bu belgedeki ekran görüntüleri (emülatörden) |
 
