@@ -72,6 +72,17 @@ cd vivado
 >
 > Proje açılır, sonra **Generate Bitstream**. Digilent'in board dosyaları gerekmez: proje yalnızca
 > `xc7a100tcsg324-1` parçasını kullanır, pinler `constr/nexys4ddr.xdc`'den gelir.
+>
+> **"XML ... encoding not supported" hatası:** Depodaki dosyaların hepsi ASCII; bu hata Vivado'nun kendi
+> XML dosyalarından (`.xpr` ve iç dosyaları) gelir ve Türkçe ortamda çıkar:
+> 1. **Yolda Türkçe karakter ya da boşluk olmasın.** `C:\Users\Şükrü\Masaüstü\amiral64` veya OneDrive altı
+>    olmaz. Depoyu `C:/fpga/amiral64` gibi bir yere klonla. Windows kullanıcı adı Türkçe karakterliyse
+>    Vivado'nun geçici klasörü de bozulur: Tcl Console'dan önce `set ::env(TEMP) C:/fpga/tmp` ya da
+>    Windows'ta `TEMP`/`TMP` ortam değişkenlerini `C:\fpga\tmp` yap.
+> 2. **Sistem dili Türkçe ise** (Türkçe'deki i/İ dönüşümü XML parser'larını bozar): Ayarlar > Saat ve Dil >
+>    Bölge > **Yönetimsel dil ayarları > Sistem yerel ayarını değiştir** → *İngilizce (ABD)*, bilgisayarı
+>    yeniden başlat. Linux'ta Vivado'yu `LC_ALL=en_US.UTF-8 vivado` ile başlat.
+> 3. Yarım kalan `vivado/konsol/` klasörünü sil, Vivado'yu yeniden aç ve `source create_project.tcl`'i tekrar çalıştır.
 
 > `make -C sw` adımını atlarsan sentez, `boot.mem` ya da `cart_00.mem` bulunamadığı için hata verir.
 > Oyunlarda bir şey değiştirdiğinde önce `make -C sw`, sonra yeniden bitstream.
