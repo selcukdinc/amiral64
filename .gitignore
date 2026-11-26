@@ -1,5 +1,7 @@
-build/
-sw/build/
+/build/
+# compiled 6502 software: only the ROM images are kept, so the project opens without cc65
+sw/build/*
+!sw/build/*.mem
 vivado/konsol/
 __pycache__/
 .DS_Store

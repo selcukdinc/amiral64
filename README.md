@@ -47,6 +47,9 @@ Bu komut boot ROM'u, launcher'ı, altı oyunu ve kartuşu (128 KB) derler. Bitin
 `boot.mem`, `cart_00.mem` … `cart_1f.mem` ve `cart.bin` dosyaları olur. "Warning: 'sprites_data' is defined but never used" gibi
 uyarılar normaldir.
 
+> `sw/build/` altındaki `.mem` dosyaları (ROM ve kartuş görüntüleri) depoda hazır geliyor. Oyunları
+> değiştirmeyeceksen cc65 kurmadan ve `make` çalıştırmadan doğrudan projeyi oluşturabilirsin.
+
 Sonra VivadoMac projesini oluştur:
 
 ```sh
@@ -55,6 +58,20 @@ cd vivado
 ```
 
 Çıktının sonunda `# Batch run finished` yazar ve `vivado/konsol/konsol.xpr` oluşur.
+
+> **`.xpr` dosyası depoda yok**, her bilgisayarda bu betikle oluşturulur (içinde o bilgisayara özel yollar
+> olur). Sonraki açılışlarda doğrudan `vivado/konsol/konsol.xpr`'yi aç.
+>
+> **Xilinx Vivado ile (Windows/Linux):** Vivado'yu aç, alttaki **Tcl Console**'a sırayla yaz
+> (yolda `\` değil `/` kullan):
+>
+> ```tcl
+> cd C:/yol/amiral64/vivado
+> source create_project.tcl
+> ```
+>
+> Proje açılır, sonra **Generate Bitstream**. Digilent'in board dosyaları gerekmez: proje yalnızca
+> `xc7a100tcsg324-1` parçasını kullanır, pinler `constr/nexys4ddr.xdc`'den gelir.
 
 > `make -C sw` adımını atlarsan sentez, `boot.mem` ya da `cart_00.mem` bulunamadığı için hata verir.
 > Oyunlarda bir şey değiştirdiğinde önce `make -C sw`, sonra yeniden bitstream.
