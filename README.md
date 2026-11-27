@@ -2,7 +2,7 @@
 
 Digilent Nexys 4 DDR kartı için 6502 işlemcili bir oyun konsolu. Tamamı VHDL ile yazıldı ve macOS'ta
 VivadoMac'in açık kaynak akışıyla (GHDL, yosys, nextpnr-xilinx, openFPGALoader) derleniyor. İçinde T65 işlemci,
-karo ve sprite tabanlı bir görüntü birimi (PPU), dört kanallı bir ses birimi (APU), klavye, dört NES/SNES kolu,
+karo ve sprite tabanlı bir görüntü birimi (PPU), beş kanallı bir ses birimi (APU v2: iki kare, üçgen, gürültü ve dalga), klavye, dört NES/SNES kolu,
 UART, animasyonlu bir açılış ve oyun seçme ekranı (launcher) ve kartuşta yedi oyun var.
 
 Bu belge, projeyi ilk kez karta yükleyecek ve test edecek kişi için yazıldı: her adımda ne yapacağını ve
@@ -521,6 +521,15 @@ tests/run_tests.sh sw       # yazılım: emülatörde boot ROM, launcher ve yedi
 tests/run_tests.sh sim      # VHDL testbench'leri (GHDL)
 tests/run_tests.sh flow     # VivadoMac ile sentez, yerleştirme, bitstream
 ```
+
+Bu belgedeki ekran görüntüleri emülatörden alınır. Bir oyun değişince yeniden üret:
+
+```sh
+make -C sw test && python3 tools/docshots.py
+```
+
+Görüntülerin çoğu, testlerin oyunları oynarken aldığı ekranlardır (`sw/build/shots`). `docshots.py` bunları
+`docs/` klasörüne kopyalar. Önyükleme menüsü, Kristal Ocak ve Fitil Arenası sahnelerini ise kendisi oynar.
 
 ## 13. Klasörler
 

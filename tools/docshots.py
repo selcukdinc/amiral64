@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Screenshots for the README (docs/NN_name.png), taken on the Python konsol model.
 
-    python3 tools/docshots.py [scene ...]      (default: every scene; run `make -C sw` first)
+    python3 tools/docshots.py [scene ...]      (default: every scene; run `make -C sw test` first)
 
-Each scene loads a game, plays a few scripted inputs and saves one 640x480 frame.
+Most pictures are the software tests' own screenshots (sw/build/shots, the tests play the games to those
+screens), copied to docs/ under the README's names. The other scenes load a game or the cartridge, play a
+few scripted inputs and save one 640x480 frame.
 """
-import os, sys
+import os, sys, shutil
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from emu6502 import Konsol, write_png
@@ -107,7 +109,37 @@ def kristal():
     kristal_level(-1, 0, "16_kristal_secim.png")        # the mine select
 
 
-SCENES = {"fitil": fitil, "kristal": kristal}
+# the README's picture <- the test's screenshot (sw/tests/test_sw.py)
+FROM_TESTS = {
+    "04_yildiz.png": "yildiz_play.png",
+    "06_olimpiyat.png": "olimpiyat_kosu.png",
+    "08_launcher.png": "launcher_blok.png",
+    "09_blok.png": "blok_play.png",
+    "10_tilsim_pazar.png": "tilsim_shop.png",
+    "11_tilsim.png": "tilsim_scored.png",
+    "12_tilsim_baslik.png": "tilsim_title.png",
+    "13_tilsim_harita.png": "tilsim_map.png",
+    "14_koridor.png": "koridor_demon.png",
+}
+
+
+def from_tests():
+    for doc, src in FROM_TESTS.items():
+        path = os.path.join(B, "shots", src)
+        if not os.path.exists(path):
+            sys.exit(f"{path} is missing: run make -C sw test first")
+        shutil.copyfile(path, os.path.join(DOCS, doc))
+        print(f"wrote docs/{doc} (from the tests' {src})")
+
+
+def menu():
+    """the boot ROM's own menu with the real cartridge (Select held at power-up)"""
+    k = Konsol(rom("boot.bin"), rom("cart.bin"))
+    run(k, 140, [0x20]); run(k, 30)
+    shot(k, "02_menu.png")
+
+
+SCENES = {"tests": from_tests, "menu": menu, "fitil": fitil, "kristal": kristal}
 
 if __name__ == "__main__":
     for name in sys.argv[1:] or SCENES:
