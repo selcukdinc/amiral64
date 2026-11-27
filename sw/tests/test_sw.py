@@ -107,17 +107,33 @@ def peek(k, syms, name, off=0, size=1):
         v |= k.rd(a + i) << (8 * i)
     return v
 
-k, S = load_game("kristal")
-check("kristal: fits in 20 KB", len(rom("game_kristal.bin")) <= 0x5000)
-run(k, 10, shot="kristal_title.png")
-check("kristal: title screen", "KRISTAL OCAK" in screen_text(k))
+def load_low(name):
+    k = Konsol(rom("boot.bin"))
+    g = rom(f"game_{name}.bin")
+    k.ram[0x400:0x400 + len(g)] = g
+    if os.path.exists(os.path.join(B, f"game_{name}.bin.ek")):      # extra data: where the loader leaves the port
+        k.cart = bytearray(rom(f"game_{name}.bin.ek")); k.cart_addr = 0
+    k.pc = 0x400
+    syms = {}
+    for l in open(os.path.join(B, f"game_{name}.lbl")):
+        _, addr, label = l.split()
+        syms[label.lstrip(".")] = int(addr, 16)
+    return k, syms
+
+k, S = load_low("kristal")
+check("kristal: fits below $8000 (loads at $0400)", len(rom("game_kristal.bin")) <= 0x7C00)
+run(k, 40, shot="kristal_title.png")
+check("kristal: title screen", "KRISTALLERI TOPLA" in screen_text(k), screen_text(k))
+check("kristal: crystals fall behind the title", sum(1 for i in range(8, 16) if k.rd(0x300 + 4 * i) < 240) >= 4)
 k.pads[1] = 0x10                          # Enter = keyboard player 2 Start
 run(k, 3); k.pads[1] = 0; run(k, 2)
 run(k, 10, shot="kristal_level1.png")
-check("kristal: level 1 drawn", "KRISTAL 00/10" in screen_text(k), screen_text(k))
+txt = screen_text(k)
+check("kristal: level 1 drawn with its HUD", "00/10" in txt and "PUAN" in txt and "OCAK 1" in txt, txt)
 W = 32
 cell = lambda x, y: peek(k, S, "map", y * W + x) & 15
 check("kristal: hero starts at (1,1)", peek(k, S, "hero_x") == 1 and peek(k, S, "hero_y") == 1)
+check("kristal: the miner is a sprite", k.rd(0x300) < 240 and k.rd(0x302) <= 10)
 def walk(mask, until, limit=120):
     """hold a direction until the hero reaches a cell (the game moves once per 6-frame step)"""
     k.pads[0] = mask
@@ -128,13 +144,34 @@ def walk(mask, until, limit=120):
     run(k, 2)
 hx = lambda: peek(k, S, "hero_x")
 hy = lambda: peek(k, S, "hero_y")
+# the sprite slides: while walking right it moves a few pixels a frame, never a whole cell at once
+# (the OAM the PPU shows: copied by DMA in the NMI)
+xs = []
+k.pads[0] = 0x01
+for _ in range(14):
+    run(k, 1); xs.append(k.ppu.vram[0x5201] | (0x100 if k.ppu.vram[0x5203] & 0x80 else 0))
+k.pads[0] = 0; run(k, 2)
+steps = [b - a for a, b in zip(xs, xs[1:])]
+check("kristal: the miner slides from cell to cell", max(steps) <= 4 and sum(1 for d in steps if d > 0) >= 8, xs)
 walk(0x01, lambda: hx() == 6)
 check("kristal: walks right through dirt", hx() == 6 and cell(5, 1) == 0, f"x={hx()}")
 walk(0x04, lambda: hy() == 2)                 # down
 walk(0x01, lambda: hx() == 7)                 # right: under the rock at (7,1)
-walk(0x01, lambda: hx() == 8)                 # right again: the rock falls into (7,2)
+k.pads[0] = 0x01                              # right again: the rock wobbles once, then falls into (7,2)
+wobbled = dusty = False
+for _ in range(30):
+    run(k, 1)
+    if peek(k, S, "map", 1 * W + 7) & 0x20: wobbled = True
+    if any(13 <= k.rd(0x300 + 4 * i + 2) <= 15 and k.rd(0x300 + 4 * i) < 240 for i in range(1, 5)): dusty = True
+    if hx() == 8: k.pads[0] = 0
+k.pads[0] = 0
 run(k, 12)
+check("kristal: the rock wobbles before it falls", wobbled)
 check("kristal: rock falls into the dug cell", cell(7, 2) == 3 and cell(7, 1) == 0, f"(7,1)={cell(7,1)} (7,2)={cell(7,2)}")
+check("kristal: dust flies where the rock lands", dusty)
+pal5 = lambda: bytes(k.ppu.vram[0x5000 + 5 * 32 + 10:0x5000 + 5 * 32 + 18])
+c0 = pal5(); run(k, 9)
+check("kristal: the crystals' colours turn round", pal5() != c0)
 walk(0x08, lambda: hy() == 1)                 # up to (8,1)
 walk(0x01, lambda: hx() == 11)                # right to the crystal at (11,1)
 check("kristal: crystal collected", peek(k, S, "gems") == 1 and peek(k, S, "score", size=2) == 10,
@@ -320,19 +357,6 @@ def tilsim_value(cards):
          else 3 if v[0] == 3 else 2 if v[0] == 2 and len(v) > 1 and v[1] == 2 else 1 if v[0] == 2 else 0)
     sc = cards if t in (4, 5, 6, 8) else [max(cards, key=lambda c: c & 15)] if t == 0 else [c for c in cards if cnt[c & 15] >= 2]
     return (BC[t] + sum((c & 15) + 2 if (c & 15) < 9 else 11 if (c & 15) == 12 else 10 for c in sc)) * BM[t]
-
-def load_low(name):
-    k = Konsol(rom("boot.bin"))
-    g = rom(f"game_{name}.bin")
-    k.ram[0x400:0x400 + len(g)] = g
-    if os.path.exists(os.path.join(B, f"game_{name}.bin.ek")):      # extra data: where the loader leaves the port
-        k.cart = bytearray(rom(f"game_{name}.bin.ek")); k.cart_addr = 0
-    k.pc = 0x400
-    syms = {}
-    for l in open(os.path.join(B, f"game_{name}.lbl")):
-        _, addr, label = l.split()
-        syms[label.lstrip(".")] = int(addr, 16)
-    return k, syms
 
 k, S = load_low("tilsim")
 check("tilsim: fits below $8000 (loads at $0400)", len(rom("game_tilsim.bin")) <= 0x7C00)

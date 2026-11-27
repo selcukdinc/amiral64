@@ -27,7 +27,7 @@ $(B)/koridor/art.h: games/koridor/art.txt ../tools/gfx.py
 	mkdir -p $(dir $@)
 	python3 ../tools/gfx.py $< $@ --tile-base 208
 # games short of room keep their graphics run-length packed (k_vunpack)
-RLE_GAMES = tilsim
+RLE_GAMES = tilsim kristal
 $(addprefix $(B)/,$(addsuffix /art.h,$(RLE_GAMES))): $(B)/%/art.h: games/%/art.txt ../tools/gfx.py
 	mkdir -p $(dir $@)
 	python3 ../tools/gfx.py $< $@ --rle
@@ -67,7 +67,7 @@ $(B)/ek.o: lib/ek.c lib/konsol.h | $(B)
 $(B)/konsolx.lib: $(B)/bigtext.o $(B)/vunpack.o $(B)/ses.o $(B)/ses_std.o $(B)/ksfx.o $(B)/ek.o
 	rm -f $@; ar65 a $@ $^
 # games bigger than 20 KB load at $0400 instead of $9000 (game_c_low.cfg; the cartridge entry says where)
-LOW_GAMES = tilsim koridor
+LOW_GAMES = tilsim koridor kristal
 # games whose music goes to the cartridge's extra data (game_c_ek.cfg: read in by k_ek_yukle at $B000)
 EK_GAMES = tilsim
 GAME_CFG = $(if $(filter $(1),$(EK_GAMES)),game_c_ek.cfg,$(if $(filter $(1),$(LOW_GAMES)),game_c_low.cfg,game_c.cfg))
@@ -100,7 +100,7 @@ ses-dinle: $(foreach n,$(SES_NAMES),$(B)/sesoyna_$(n).bin)
 	python3 ../tools/sesdinle.py $(SES_NAMES)
 
 # Games on the cartridge: NAME:players:binary[:icon[:load address, hex]] ('*' = the launcher, started by the boot ROM)
-CART_GAMES = "*KONSOL:1:$(B)/game_launcher.bin" "KRISTAL OCAK:1:$(B)/game_kristal.bin:1" "BLOK YAGMURU:1:$(B)/game_blok.bin:5" "TILSIM:1:$(B)/game_tilsim.bin:6:0400" "YILDIZ MUHAFIZI:1:$(B)/game_yildiz.bin:2" "FITIL ARENASI:2-4:$(B)/game_fitil.bin:3" "MAHALLE OLIMPIYATI:1-4:$(B)/game_olimpiyat.bin:4" "KORIDOR 64:1:$(B)/game_koridor.bin:7:0400"
+CART_GAMES = "*KONSOL:1:$(B)/game_launcher.bin" "KRISTAL OCAK:1:$(B)/game_kristal.bin:1:0400" "BLOK YAGMURU:1:$(B)/game_blok.bin:5" "TILSIM:1:$(B)/game_tilsim.bin:6:0400" "YILDIZ MUHAFIZI:1:$(B)/game_yildiz.bin:2" "FITIL ARENASI:2-4:$(B)/game_fitil.bin:3" "MAHALLE OLIMPIYATI:1-4:$(B)/game_olimpiyat.bin:4" "KORIDOR 64:1:$(B)/game_koridor.bin:7:0400"
 CART_BINS = $(B)/game_launcher.bin $(B)/game_kristal.bin $(B)/game_blok.bin $(B)/game_tilsim.bin $(B)/game_yildiz.bin $(B)/game_fitil.bin $(B)/game_olimpiyat.bin $(B)/game_koridor.bin
 # test cartridge (menu tests, tb_boot): two tiny games that report on SYS_TEST
 TEST_GAMES = "TEST OYUN A:1:$(B)/gametest_A.bin" "TEST OYUN B:2-4:$(B)/gametest_B.bin"
