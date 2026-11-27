@@ -1,5 +1,8 @@
 /* Kristal Ocak: dig through the mine, collect the crystals, reach the exit before time runs out.
  * Rocks and crystals fall and roll; a rock wobbles once before it falls, and a falling rock is deadly.
+ * A rock that falls on a cracked wall breaks it. Dynamite is picked up, placed with B + direction on an
+ * empty cell, burns for three steps and blows up the 3x3 round it: dirt, rocks and cracked walls go,
+ * steel walls and crystals stay, other dynamite goes off too, and so does the miner.
  * The miner walks smoothly from cell to cell; dust flies where rocks land, crystals sparkle, the exit
  * door slides open. Three mines with their own colours.
  * Screens: title (with a demo when left alone), mine select, level card, play, pause menu, death,
@@ -97,6 +100,9 @@ unsigned char map[H][W];
 unsigned char hero_x, hero_y, gems, level, lives, alive, exit_open, won;
 unsigned score, time_left;
 unsigned char gems_total, died_here, snap;              /* crystals the level has; a life lost in it; B dig */
+unsigned char dyns, blasted;                            /* dynamite carried; the miner was in a blast */
+#define NFUSE 6
+unsigned char fuse_x[NFUSE], fuse_y[NFUSE], fuse_t[NFUSE];   /* lit dynamite: steps left (0 = free slot) */
 static unsigned cam, cam_target;
 static unsigned char exit_x, exit_y, exit_stage, tick, frames60, anim;
 /* the miner on screen: where he came from, which way he faces, what he does */
@@ -128,11 +134,11 @@ static void draw_cell(unsigned char x, unsigned char y) {
     case GEM: t = T_gem; p = PAL_C; break;
     case GEM2: t = T_gem2; p = PAL_C; break;
     case EXIT: t = T_exit0 + exit_stage * 4; p = PAL_C; break;
-    case CRACK: t = T_crack; break;
+    case CRACK: t = c & WOBBLE ? T_crack2 : T_crack; break;     /* hit: it breaks next step */
     case DYN: t = T_dyn; p = PAL_S; break;
-    case LIT: t = anim & 4 ? T_dynlit1 : T_dynlit0; p = PAL_S; break;
+    case LIT: t = anim & 8 ? T_dynlit1 : T_dynlit0; p = PAL_S; break;
     case GAS: t = T_gas; p = PAL_S; break;
-    case BOOM: t = anim & 2 ? T_boom1 : T_boom0; p = PAL_S; break;
+    case BOOM: t = c & WOBBLE ? T_boom1 : T_boom0; p = PAL_S; break;
     case RAIL: t = T_rail; p = PAL_S; break;
     case CART: t = T_cart; p = PAL_S; break;
     case OIL: t = T_oil; p = PAL_S; break;
@@ -154,6 +160,7 @@ static void hud_static(void) {
     k_tile(10, 0, T_iclock, PAL_ICON);
     k_tile(16, 0, T_iheart, PAL_ICON);
     k_print(21, 0, "PUAN", 1);
+    k_tile(33, 0, T_idyn, PAL_ICON);
     k_print(1, 1, "OCAK  -", 2);
 }
 
@@ -165,6 +172,7 @@ static void hud(void) {
     k_print_num(26, 0, score, 5, 0);
     k_print_num(6, 1, lv_mine[level] + 1, 1, 2);
     k_print_num(8, 1, lv_num[level], 1, 2);
+    k_print_num(35, 0, dyns, 1, dyns ? 1 : 0);
     k_seg_number(score);
 }
 
@@ -251,7 +259,8 @@ static void load_level(void) {
     unsigned char x, y;
     char c;
     gems = 0; gems_total = 0; exit_open = 0; exit_stage = 0; alive = 1; won = 0; moving = 0; face = 0; act = 0;
-    snap = 0; time_left = lv_time[level]; frames60 = 0; tick = 0; shake = 0;
+    snap = 0; time_left = lv_time[level]; frames60 = 0; tick = 0; shake = 0; dyns = 0; blasted = 0;
+    for (x = 0; x < NFUSE; ++x) fuse_t[x] = 0;
     for (x = 0; x < NFX; ++x) fx_t[x] = 0;
     set_mine_palettes(lv_mine[level]);
     for (y = 0; y < H; ++y)
@@ -265,6 +274,8 @@ static void load_level(void) {
             case '+': map[y][x] = GEM2; gems_total += 5; break;
             case 'E': map[y][x] = EXIT; exit_x = x; exit_y = y; break;
             case 'P': map[y][x] = HERO; hero_x = x; hero_y = y; break;
+            case 'C': map[y][x] = CRACK; break;
+            case 'D': map[y][x] = DYN; break;
             default: map[y][x] = EMPTY;
             }
         }
@@ -294,6 +305,12 @@ static void physics(void) {
         for (ph_x = 1; ph_x < W - 1; ++ph_x) {
             ph_c = row[ph_x];
             ph_k = ph_c & 0x0F;
+            if (ph_k == BOOM || ph_k == CRACK) {
+                /* a blast burns for two steps; a cracked wall that was hit falls apart */
+                if (ph_c & WOBBLE) { row[ph_x] = EMPTY; redraw(ph_x, ph_y); if (ph_k == CRACK) fx_add(1, ph_x, ph_y); }
+                else if (ph_k == BOOM) { row[ph_x] = BOOM | WOBBLE; draw_cell(ph_x, ph_y); }
+                continue;
+            }
             if (ph_k != ROCK && ph_k != GEM && ph_k != GEM2) continue;
             ph_b = row[ph_x + W] & 0x0F;
             if (ph_b == EMPTY) {
@@ -307,6 +324,13 @@ static void physics(void) {
                 }
             } else if (ph_b == HERO && (ph_c & FALLING)) {
                 alive = 0;
+            } else if (ph_b == CRACK && ph_k == ROCK && (ph_c & FALLING)) {
+                row[ph_x + W] = CRACK | WOBBLE;          /* the rock breaks the wall, then falls through */
+                draw_cell(ph_x, ph_y + 1);
+                k_sfx(SFX_BOOM);
+                landed(ph_x, ph_y);
+                row[ph_x] = ROCK;
+                draw_cell(ph_x, ph_y);
             } else if ((ph_b == ROCK || ph_b == GEM || ph_b == GEM2)
                        && row[ph_x - 1] == EMPTY && row[ph_x - 1 + W] == EMPTY) {
                 row[ph_x - 1] = ph_k | FALLING; row[ph_x] = EMPTY;
@@ -325,6 +349,48 @@ static void physics(void) {
     }
 }
 
+/* ---------------------------------------------------------------- dynamite */
+static void light(unsigned char x, unsigned char y, unsigned char t) {
+    unsigned char i;
+    for (i = 0; i < NFUSE; ++i)
+        if (!fuse_t[i]) {
+            fuse_x[i] = x; fuse_y[i] = y; fuse_t[i] = t;
+            map[y][x] = LIT; draw_cell(x, y);
+            return;
+        }
+}
+
+/* the 3x3 round (x, y): steel walls, the door and crystals stay; other dynamite goes off next */
+static void explode(unsigned char x, unsigned char y) {
+    unsigned char cx, cy, k, i;
+    k_sfx(SFX_BOOM);
+    shake = 10;
+    fx_add(1, x, y);
+    for (cy = y - 1; cy <= y + 1; ++cy)
+        for (cx = x - 1; cx <= x + 1; ++cx) {
+            k = KIND(map[cy][cx]);
+            if (k == WALL || k == EXIT || k == GEM || k == GEM2) continue;
+            if (k == HERO) { alive = 0; blasted = 1; continue; }
+            if (k == DYN) { light(cx, cy, 1); continue; }
+            if (k == LIT && (cx != x || cy != y)) {
+                for (i = 0; i < NFUSE; ++i) if (fuse_t[i] && fuse_x[i] == cx && fuse_y[i] == cy) fuse_t[i] = 1;
+                continue;
+            }
+            map[cy][cx] = BOOM;
+            redraw(cx, cy);
+        }
+}
+
+/* one game step for the fuses */
+static void fuses(void) {
+    unsigned char i;
+    for (i = 0; i < NFUSE; ++i)
+        if (fuse_t[i]) {
+            if (!--fuse_t[i]) explode(fuse_x[i], fuse_y[i]);
+            else draw_cell(fuse_x[i], fuse_y[i]);     /* the fuse flickers */
+        }
+}
+
 /* ---------------------------------------------------------------- the miner moves */
 static void collect(unsigned char x, unsigned char y, unsigned char t) {
     gems += t == GEM2 ? 5 : 1;
@@ -335,13 +401,18 @@ static void collect(unsigned char x, unsigned char y, unsigned char t) {
     hud();
 }
 
-/* B + direction: dig the dirt or take the crystal next to the miner, and stay put */
+static void take_dyn(void) { ++dyns; k_sfx(SFX_PICKUP); hud(); }
+
+/* B + direction: dig the dirt or take what is next to the miner and stay put; on an empty cell, place
+ * a stick of dynamite (it burns for three steps after this one) */
 static void snap_at(signed char dx, signed char dy) {
     unsigned char nx = hero_x + dx, ny = hero_y + dy, t = KIND(map[ny][nx]);
     face = dy > 0 ? 0 : dy < 0 ? 1 : dx > 0 ? 2 : 3;
     act = 0; snap = 1;
+    if (t == EMPTY && dyns) { --dyns; hud(); light(nx, ny, 4); k_sfx(SFX_TICK); return; }
     if (t == DIRT) k_sfx(SFX_TICK);
     else if (t == GEM || t == GEM2) collect(nx, ny, t);
+    else if (t == DYN) take_dyn();
     else return;
     map[ny][nx] = EMPTY;
     redraw(nx, ny);
@@ -351,7 +422,7 @@ static void move_hero(signed char dx, signed char dy) {
     unsigned char nx = hero_x + dx, ny = hero_y + dy, t = KIND(map[ny][nx]);
     face = dy > 0 ? 0 : dy < 0 ? 1 : dx > 0 ? 2 : 3;
     act = 0;
-    if (t == WALL || t == CRACK) return;
+    if (t != EMPTY && t != DIRT && t != ROCK && t != GEM && t != GEM2 && t != EXIT && t != DYN) return;
     if (t == ROCK) {
         /* push sideways into an empty cell */
         if (dy || KIND(map[ny][nx + dx]) != EMPTY) return;
@@ -366,7 +437,7 @@ static void move_hero(signed char dx, signed char dy) {
     } else if (t == DIRT) {
         k_sfx(SFX_TICK);
         act = 1;
-    }
+    } else if (t == DYN) take_dyn();
     map[hero_y][hero_x] = EMPTY;
     from_x = hero_x; from_y = hero_y;
     redraw(hero_x, hero_y);
@@ -623,6 +694,7 @@ static void play_frame(void) {
         else if (dir & BTN_DOWN) move_hero(0, 1);
         else if (dir & BTN_LEFT) move_hero(-1, 0);
         else if (dir & BTN_RIGHT) move_hero(1, 0);
+        fuses();
         physics();
     }
     draw_hero();
@@ -678,7 +750,7 @@ static void death_enter(void) {
         fx_x[i] += i & 1 ? 6 : -6; fx_y[i] += i & 2 ? 5 : -5; fx_t[i] = 12 + i * 3;
     }
     k_fill_tiles(26, 1, 14, 1, ' ', 0);
-    k_print(26, 1, restart ? "YENIDEN" : time_left ? "EZILDIN!" : "SURE BITTI!", 3);
+    k_print(26, 1, restart ? "YENIDEN" : blasted ? "PATLADIN!" : time_left ? "EZILDIN!" : "SURE BITTI!", 3);
     restart = 0;
 }
 

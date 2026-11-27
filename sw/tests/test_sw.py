@@ -260,6 +260,43 @@ check("kristal: the demo collects crystals and opens the door", peek(k, S, "gems
 tap(0x80)
 check("kristal: a key ends the demo", st() == ST_TITLE)
 
+# Faz 6: cracked walls and dynamite, set up on level 1 by writing the map
+k, S = load_low("kristal")
+run(k, 40); tap(0x10, player=1); run(k, 10); tap(0x10); run(k, 30); tap(0x80); run(k, 10)
+EMPTY, DIRT, WALL, ROCK, GEM, GEM2, EXIT, HERO, CRACK, DYN, LIT, GAS, BOOM = range(13)
+setc = lambda x, y, v: k.wr(S["_map"] + y * W + x, v)
+# a rock over a gap over a cracked wall, walled in at the sides
+for y in range(8, 12):
+    setc(19, y, WALL); setc(21, y, WALL); setc(20, y, EMPTY)
+setc(20, 7, WALL); setc(20, 8, ROCK); setc(20, 10, CRACK)
+saw_hit = False
+for _ in range(80):
+    run(k, 1)
+    if peek(k, S, "map", 10 * W + 20) == CRACK | 0x20: saw_hit = True
+check("kristal: a falling rock breaks the cracked wall and falls through", saw_hit and cell(20, 10) == EMPTY and cell(20, 11) == ROCK,
+      f"{[cell(20, y) for y in range(8, 12)]}")
+# dynamite: place it to the right with B, run down; a stick next to it goes off too (chain),
+# the crystal and the steel wall stay, the rock goes
+k.wr(S["_dyns"], 2)
+setc(2, 1, EMPTY); setc(3, 1, DYN); setc(3, 2, GEM); setc(4, 1, WALL); setc(4, 2, ROCK)
+walk(0x41, lambda: cell(2, 1) == LIT, limit=20)
+check("kristal: B + direction on an empty cell places lit dynamite", cell(2, 1) == LIT and (hx(), hy()) == (1, 1)
+      and peek(k, S, "dyns") == 1, f"{cell(2, 1)} ({hx()},{hy()})")
+walk(0x04, lambda: hy() == 3)
+burnt = set()
+for _ in range(40):
+    run(k, 1); burnt |= {(x, y) for x in range(0, 6) for y in range(0, 4) if cell(x, y) == BOOM}
+run(k, 20, shot="kristal_dynamite.png")
+check("kristal: the dynamite blows up the 3x3 round it", {(1, 1), (2, 1), (1, 2), (2, 2)} <= burnt and cell(2, 2) != ROCK
+      and cell(1, 2) == EMPTY and not any(y in (0, 3) for _, y in burnt), sorted(burnt))
+check("kristal: a stick in the blast goes off too (chain)", cell(4, 2) != ROCK and cell(3, 1) != DYN, f"{cell(4, 2)} {cell(3, 1)}")
+check("kristal: crystals and steel walls stay", cell(3, 2) == GEM and cell(4, 1) == WALL and cell(1, 0) == WALL,
+      f"{cell(3, 2)} {cell(4, 1)}")
+check("kristal: the miner out of the blast lives", peek(k, S, "alive") == 1 and st() == ST_PLAY)
+# the last stick, right above the miner, who stays: the blast kills him
+walk(0x48, lambda: cell(1, 2) == LIT, limit=20)
+run(k, 30)
+check("kristal: the blast kills the miner", st() == ST_DEATH and "PATLADIN" in screen_text(k), f"state={st()}")
 
 k, S = load_game("yildiz")
 check("yildiz: fits in 20 KB", len(rom("game_yildiz.bin")) <= 0x5000)
