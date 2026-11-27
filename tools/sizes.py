@@ -10,7 +10,7 @@ import os, re, sys, glob, argparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 B = os.path.join(HERE, "..", "sw", "build")
-LOW = {"tilsim", "koridor"}                      # loaded at $0400 (sw/Makefile LOW_GAMES)
+LOW = {"tilsim", "koridor", "kristal"}                    # loaded at $0400 (sw/Makefile LOW_GAMES)
 
 
 def segments(path):
