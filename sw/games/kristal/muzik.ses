@@ -1,0 +1,135 @@
+# Kristal Ocak: the title theme (the tune on the wave channel, doubled softly on square 1 for APU v1),
+# a loop for each mine, the hurry tune for the last seconds, the level-end fanfare, game over, effects.
+# Effects use square 2, the noise and the triangle; the music's melody stays on square 1 and the wave.
+include ../../lib/ortak.ses
+
+inst hiss   v=7 6 5 3 2 1 0
+inst tis    v=5 7 9 10 11 11 10 10 9 8 7 6 5 4 3 2 1 0
+inst cizir  v=6 7 6 5 5 4 3 3 2 1 0                     d=4
+inst bum    v=15 15 14 13 12 11 10 9 8 7 6 5 5 4 4 3 3 2 2 1 1 0   a=0 1 2 3 4 5 6 7 7 8 8 9
+inst tik    v=9 4 0                                     d=1
+inst gicir  v=8 7 7 6 5 4 3 2 1 0                       p=0 -2 -2 2 2 -2 -2 2 2 -2   d=0
+inst dusus  v=11 11 10 10 9 9 8 7 6 5 4 3 2 1 0        p=0 1 1 2 2 3 3 4 4 5 5 6 6 7   d=2
+
+macro kazma  @noisek n12,8 @hat n1 @snare n6 @hat n1
+
+# ---------------------------------------------------------------- the title: A minor, 8 bars
+song baslik bpm=108 filtre=1
+  wav: v11 L @worgan o4 a4 >c4 e4 d8 c8 | <b4. a8 g+2 | a4 >c4 e4 a4 | g2. r4
+  wav:          f4 e4 d4 c8 <b8 | a4 >c4 <b2 | a4 g+4 a4 b4 | a2. r4
+  sq1: v6 @lead L o5 a4 >c4 e4 d8 c8 | <b4. a8 g+2 | a4 >c4 e4 a4 | g2. r4
+  sq1:          f4 e4 d4 c8 <b8 | a4 >c4 <b2 | a4 g+4 a4 b4 | a2. r4
+  sq2: v6 L o4 @minarp a1 @majarp e1 @minarp a1 @majarp g1 f1 @minarp a1 @majarp e1 @minarp a1
+  tri: L @bassp o3 [a8 >a8<]4 [e8 >e8<]4 [a8 >a8<]4 [g8 >g8<]4 [f8 >f8<]4 [a8 >a8<]4 [e8 >e8<]4 [a8 >a8<]4
+  noi: v7 L [@hat n1,4 n1,4 @ohat n2,4 @hat n1,4]8
+end
+
+# ---------------------------------------------------------------- Toprak Ocak: A minor, a digging groove
+song toprak bpm=132 filtre=1
+  sq1: v11 @lead25 ~2,6 L o5 l8 a4 e a >c4 <b a | g4 e g b4 a g | f4 a >c e4 d c | <b4 g+ b e2
+  sq1:                        a4 e a >c4 <b a | g4 b >d g4 f e | f4 d <b g+4 b >d | c4 <b4 a2
+  sq2: v6 L o4 @minarp a1 @majarp g1 f1 e1 @minarp a1 @majarp g1 @minarp d1 @majarp e1
+  tri: L @bassp o3 [a8 >a8<]4 [g8 >g8<]4 [f8 >f8<]4 [e8 >e8<]4 [a8 >a8<]4 [g8 >g8<]4 [d8 >d8<]4 [e8 >e8<]4
+  noi: v10 L [*kazma]16
+  wav: v6 L @wsine o4 c1 <b1 a1 g+1 >c1 <b1 a1 g+1
+end
+
+# ---------------------------------------------------------------- Buz Magarasi: E minor, icy arpeggios
+song buz bpm=116 filtre=2
+  sq1: v8 @pluck12 L o5 l8 [e b g b]2 [d a f+ a]2 [c g e g]2 [<b >f+ d+ f+]2
+  sq1:                     [e b g b]2 [d a f+ a]2 [c g e g]2 [<b >f+ d+ f+]2
+  wav: v10 L @wsine o5 b2 g2 | a2 f+2 | g2 e2 | f+1 | b2 >d2 | c2 <a2 | g2 e2 | d+1
+  sq2: v4 @pad L o4 [g1 f+1 e1 d+1]2
+  tri: L @bass o3 e1 d1 c1 <b1 >e1 d1 c1 <b1 >
+  noi: v8 L [@hat n1,4 n1,8 n1,8 @ohat n2,4 @hat n1,4]8
+end
+
+# ---------------------------------------------------------------- Lav Derinligi: D minor, dark and slow
+song lav bpm=96 filtre=2
+  wav: v11 L @worgan o4 d2. e-4 | d2 c4 <a4 | b-2. a4 | a1 | >d2. f4 | e-2 d4 c4 | d2 c4 <b-4 | a1
+  sq1: v6 @echo L o5 r2 a8 r8 g8 r8 | r1 | r2 e-8 r8 d8 r8 | r1 | r2 a8 r8 b-8 r8 | r1 | r2 g8 r8 f8 r8 | r1
+  sq2: v4 @pad L o3 [f1 g1 f1 e1]2
+  tri: L @bassp o2 [d8 d8 >d8< d8]4 [e-8 e-8 >e-8< e-8]2 [d8 d8 >d8< c8]2
+  tri:             [d8 d8 >d8< d8]4 [e-8 e-8 >e-8< e-8]2 [d8 d8 >d8< c8]2
+  noi: v9 L [@noisek n13,4 r4 @snare n8,4 r4]8
+end
+
+# ---------------------------------------------------------------- time is running out: A minor, tense
+song acele bpm=168 filtre=1
+  sq1: v11 @pluck L o5 [a16 r16 a16 >c16< r16 a16 g16 e16]4 [g16 r16 g16 b16 r16 g16 f16 e16]4
+  sq2: v6 L o4 @minarp a1 a1 @majarp g1 e1
+  tri: L @bassst o3 [a16 a16 >a16< a16]8 [g16 g16 >g16< g16]4 [e16 e16 >e16< e16]4
+  noi: v12 L [@noisek n12,8 @hat n1,16 n1,16 @snare n6,8 @hat n1,16 n1,16]8
+  wav: v8 L @wsaw o4 a2 >c2< b2 e2 a2 >c2< g2 e2
+end
+
+# ---------------------------------------------------------------- the level is done (C major) / game over
+song bolum bpm=140
+  sq1: v13 @lead25 o5 c8 e8 g8 >c4 <g8 >c8 e8 | g2. r4
+  sq2: v9 @lead o4 e8 g8 >c8 e4 c8 e8 g8 | e2. r4
+  tri: @bass o3 c8 c8 c8 c4 g8 g8 g8 | c2. r4
+  noi: r1 @crash n3,2. r4
+  wav: v10 @worgan o4 g8 g8 g8 >c4 <b8 >c8 d8 | e2. r4
+end
+
+song bitti bpm=88
+  sq1: v12 @lead ~3,6 o5 e8 c8 <a8 e8 f4 e4 | e2. r4
+  sq2: v8 @lead o4 c4 <a4 a4 g+4 | a2. r4
+  tri: @bass o3 a4 f4 d4 e4 | <a2. r4
+  noi: r1 @crash n5,2. r4
+end
+
+# ---------------------------------------------------------------- effects (lengths in frames)
+sfx kaz pri=2
+  noi: @hiss n3,6
+end
+sfx kristal pri=4
+  sq2: @ping o6 e2 b6
+end
+sfx buyuk pri=5
+  sq2: @ping o6 c2 e2 g2 >c2 e8
+end
+sfx dusus pri=3
+  tri: @kick o4 c7
+  noi: @noisek n12,6
+end
+sfx kirilma pri=5
+  noi: @bum n9,18
+  tri: @tom o3 c10
+end
+sfx fitil pri=4
+  noi: @cizir n0,10
+  sq2: @tik o7 c2
+end
+sfx patlama pri=7
+  noi: @bum n8,24
+  tri: @kick o4 c9
+end
+sfx grizu pri=5
+  noi: @tis n1,20
+end
+sfx ray pri=2
+  sq2: @gicir o7 c+4 c4
+end
+sfx kapi pri=6
+  sq2: @ping o5 c3 e3 g3 >c3 e3 g8
+end
+sfx al pri=3
+  sq2: @blip v10 o6 c2 g3
+end
+sfx it pri=2
+  tri: @tom o3 g4
+  noi: @hiss n9,4
+end
+sfx olum pri=7
+  sq2: @dusus ~4,6 o5 g5 f+5 f5 e14
+end
+sfx tik pri=2
+  sq2: @tik o6 c2
+end
+sfx yildiz pri=5
+  sq2: @ping o6 g2 >c2 e2 g8
+end
+sfx secim pri=3
+  sq2: @blip v10 o6 e2 a3
+end

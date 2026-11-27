@@ -18,6 +18,8 @@
  * moving, A held restarts the level (costs a life), Start pauses, Select + Start goes back to the menu. */
 #include "konsol.h"
 #include "bigtext.h"
+#include "ses.h"
+#include "muzik.h"            /* games/kristal/muzik.ses: in the cartridge's extra data with the art */
 #pragma static-locals (on)      /* locals in fixed places: much faster in cc65, and nothing here recurses */
 /* the pictures and palettes live in the cartridge's extra data (read in at $B000 by k_ek_yukle) */
 #pragma rodata-name (push, "EKDATA")
@@ -340,8 +342,15 @@ static void load_level(void) {
 }
 
 /* ---------------------------------------------------------------- rocks and crystals */
+/* the music: a song is only started again when it changes */
+static const unsigned char *song_now;
+static void play(const unsigned char *song) {
+    if (song != song_now) { song_now = song; ses_muzik(song); }
+}
+static void hush(void) { song_now = 0; ses_dur(); }
+
 static void landed(unsigned char x, unsigned char y) {
-    k_sfx(SFX_FALL);
+    ses_efekt(sfx_dusus);
     fx_add(1, x, y);
     if (x * 16 + 16 > cam && x * 16 < cam + 320) shake = 6;
 }
@@ -358,11 +367,12 @@ static void cart(void) {
     if (KIND(map[ph_y - 1][ph_x]) == ROCK) return;
     if (nk == ROCK && !(n & FALLING) && rail[ph_y][nx] && FREE(row[nx + d])) {
         row[nx + d] = ROCK; draw_cell(nx + d, ph_y);
-        k_sfx(SFX_TICK);
+        ses_efekt(sfx_it);
     } else if (nk == HERO) {
         alive = 0;
     } else if (!(n == RAIL)) {
-        row[ph_x] = ph_c ^ CART_R;                   /* back the other way */
+        row[ph_x] = ph_c ^ CART_R;                   /* back the other way, with a squeak */
+        ses_efekt(sfx_ray);
         return;
     }
     row[nx] = ph_c;
@@ -407,8 +417,8 @@ static void physics(void) {
             } else if (ph_b == CRACK && ph_k == ROCK && (ph_c & FALLING)) {
                 row[ph_x + W] = CRACK | WOBBLE;          /* the rock breaks the wall, then falls through */
                 draw_cell(ph_x, ph_y + 1);
-                k_sfx(SFX_BOOM);
                 landed(ph_x, ph_y);
+                ses_efekt(sfx_kirilma);
                 row[ph_x] = ROCK;
                 draw_cell(ph_x, ph_y);
             } else if ((ph_b == ROCK || ph_b == GEM || ph_b == GEM2)
@@ -443,13 +453,13 @@ static void light(unsigned char x, unsigned char y, unsigned char t) {
 static void gas_out(unsigned char x, unsigned char y, unsigned char t) {
     new_fuse(x, y, t, 1);
     fx_add(2, x, y);
-    k_sfx(SFX_TICK);
+    ses_efekt(sfx_grizu);
 }
 
 /* the 3x3 round (x, y): steel walls, the door and crystals stay; other dynamite goes off next */
 static void explode(unsigned char x, unsigned char y) {
     unsigned char cx, cy, k, i;
-    k_sfx(SFX_BOOM);
+    ses_efekt(sfx_patlama);
     shake = 10;
     fx_add(1, x, y);
     for (cy = y - 1; cy <= y + 1; ++cy)
@@ -480,17 +490,22 @@ static void fuses(void) {
 }
 
 /* ---------------------------------------------------------------- the miner moves */
+/* crystals taken one after another ring higher and higher */
+static unsigned char combo, combo_t;
 static void collect(unsigned char x, unsigned char y, unsigned char t) {
     gems += t == GEM2 ? 5 : 1;
     score += t == GEM2 ? 50 : 10;
-    k_sfx(SFX_PICKUP);
+    if (combo_t < 60) { if (combo < 12) ++combo; } else combo = 0;
+    combo_t = 0;
+    ses_perde(combo);
+    ses_efekt(t == GEM2 ? sfx_buyuk : sfx_kristal);
     fx_add(0, x, y);
-    if (gems >= need[level] && !exit_open) { exit_open = 1; k_sfx(SFX_WIN); }
+    if (gems >= need[level] && !exit_open) { exit_open = 1; ses_efekt(sfx_kapi); }
     hud();
 }
 
-static void take_dyn(void) { ++dyns; k_sfx(SFX_PICKUP); hud(); }
-static void take_oil(void) { oil = oil > 59 ? 99 : oil + 40; k_sfx(SFX_PICKUP); oil_hud(); }
+static void take_dyn(void) { ++dyns; ses_efekt(sfx_al); hud(); }
+static void take_oil(void) { oil = oil > 59 ? 99 : oil + 40; ses_efekt(sfx_al); oil_hud(); }
 
 /* B + direction: dig the dirt or take what is next to the miner and stay put; on an empty cell, place
  * a stick of dynamite (it burns for three steps after this one) */
@@ -498,8 +513,8 @@ static void snap_at(signed char dx, signed char dy) {
     unsigned char nx = hero_x + dx, ny = hero_y + dy, t = KIND(map[ny][nx]);
     face = dy > 0 ? 0 : dy < 0 ? 1 : dx > 0 ? 2 : 3;
     act = 0; snap = 1;
-    if (FREE(map[ny][nx]) && dyns) { --dyns; hud(); light(nx, ny, 4); k_sfx(SFX_TICK); return; }
-    if (t == DIRT) k_sfx(SFX_TICK);
+    if (FREE(map[ny][nx]) && dyns) { --dyns; hud(); light(nx, ny, 4); ses_efekt(sfx_fitil); return; }
+    if (t == DIRT) ses_efekt(sfx_kaz);
     else if (t == GAS) gas_out(nx, ny, 5);
     else if (t == GEM || t == GEM2) collect(nx, ny, t);
     else if (t == DYN) take_dyn();
@@ -521,17 +536,18 @@ static void move_hero(signed char dx, signed char dy) {
         map[ny][nx + dx] = ROCK;
         draw_cell(nx + dx, ny);
         act = 2;
+        ses_efekt(sfx_it);
     } else if (t == GEM || t == GEM2) {
         collect(nx, ny, t);
     } else if (t == EXIT) {
         if (exit_stage < 3) return;
         won = 1;
     } else if (t == DIRT) {
-        k_sfx(SFX_TICK);
+        ses_efekt(sfx_kaz);
         act = 1;
     } else if (t == DYN) take_dyn();
     else if (t == OIL) take_oil();
-    else if (t == GAS) { k_sfx(SFX_TICK); act = 1; gas_out(nx, ny, 5); }
+    else if (t == GAS) { act = 1; gas_out(nx, ny, 5); }
     VACATE(hero_x, hero_y);
     from_x = hero_x; from_y = hero_y;
     redraw(hero_x, hero_y);
@@ -639,6 +655,7 @@ static void go(unsigned char s);
 static void title_enter(void) {
     unsigned char i;
     screen_reset();
+    play(mus_baslik);
     set_mine_palettes(0);
     big_center(4, "KRISTAL");
     big_center(7, "OCAK");
@@ -671,6 +688,8 @@ static unsigned char slot_y(unsigned char lv) { return 8 + lv_mine[lv] * 6; }
 static void select_enter(void) {
     unsigned char i;
     screen_reset();
+    ses_ses(15);
+    play(mus_baslik);
     set_mine_palettes(0);
     big_center(2, "OCAK SEC");
     for (i = 0; i < 3; ++i) k_print(3, 6 + i * 6, mine_name[i], 1);
@@ -688,13 +707,13 @@ static void select_enter(void) {
 
 static void select_frame(void) {
     big_palette(st_t < 32 ? st_t >> 2 : 8);
-    if (pressed(BTN_LEFT | BTN_UP) && sel) { --sel; k_sfx(SFX_BLIP); }
-    if (pressed(BTN_RIGHT | BTN_DOWN) && sel + 1 < unlocked) { ++sel; k_sfx(SFX_BLIP); }
+    if (pressed(BTN_LEFT | BTN_UP) && sel) { --sel; ses_efekt(sfx_secim); }
+    if (pressed(BTN_RIGHT | BTN_DOWN) && sel + 1 < unlocked) { ++sel; ses_efekt(sfx_secim); }
     k_sprite(SPR_HERO, slot_x(sel) * 8 - 22, slot_y(sel) * 8 - 4, (st_t >> 4) & 1 ? S_side1 : S_side0, PAL_HERO);
     if (pressed(BTN_B)) go(ST_TITLE);
     else if (pressed(BTN_START | BTN_A)) {
         level = sel; lives = 3; score = 0; died_here = 0; new_best = 0;
-        k_sfx(SFX_PICKUP);
+        ses_efekt(sfx_al);
         go(ST_CARD);
     }
 }
@@ -702,6 +721,7 @@ static void select_frame(void) {
 /* ---- level card */
 static void card_enter(void) {
     screen_reset();
+    play(mus_baslik);
     set_mine_palettes(lv_mine[level]);
     level_label(level);
     big_center(5, line);
@@ -720,9 +740,13 @@ static void card_frame(void) {
 }
 
 /* ---- play (also the demo) */
+static const unsigned char *const mine_song[3] = { mus_toprak, mus_buz, mus_lav };
 static void start_level(void) {
     screen_reset();
     load_level();
+    song_now = 0;
+    play(mine_song[lv_mine[level]]);
+    combo = 0; combo_t = 255;
     buf = 0; hold_a = 0; a_armed = 0;
 }
 
@@ -735,6 +759,7 @@ static void hold_bar(void) {
 
 static void play_frame(void) {
     unsigned char p, dir;
+    if (combo_t < 255) ++combo_t;
     if (demo) {
         if (pressed(0xFF) || !alive || won || demo_i >= sizeof demo_path) { go(ST_TITLE); return; }
         p = 0;
@@ -761,6 +786,7 @@ static void play_frame(void) {
         frames60 = 0;
         if (time_left) --time_left;
         if (!time_left) alive = 0;
+        if (time_left == 20) play(mus_acele);          /* hurry */
         if (dark && oil) { --oil; oil_hud(); }
         hud();
     } else if (time_left <= 20 && (frames60 & 31) == 0) hud();
@@ -814,6 +840,7 @@ static void pause_draw(void) {
 }
 
 static void pause_enter(void) {
+    ses_ses(5);                               /* the music goes quiet while paused */
     k_sprite(SPR_HERO, -16, 0, 0, 0);
     k_hide_sprites(SPR_FX);
     box_open();
@@ -823,10 +850,11 @@ static void pause_enter(void) {
 }
 
 static void pause_frame(void) {
-    if (pressed(BTN_UP) && cursor) { --cursor; pause_draw(); k_sfx(SFX_BLIP); }
-    if (pressed(BTN_DOWN) && cursor < 2) { ++cursor; pause_draw(); k_sfx(SFX_BLIP); }
+    if (pressed(BTN_UP) && cursor) { --cursor; pause_draw(); ses_efekt(sfx_secim); }
+    if (pressed(BTN_DOWN) && cursor < 2) { ++cursor; pause_draw(); ses_efekt(sfx_secim); }
     if (pressed(BTN_B)) cursor = 0;
     if (!pressed(BTN_START | BTN_A | BTN_B)) return;
+    ses_ses(15);
     if (cursor == 0) { box_close(); state = ST_PLAY; a_armed = 0; buf = 0; draw_hero(); }
     else if (cursor == 1) { box_close(); alive = 0; restart = 1; go(ST_DEATH); }
     else go(ST_SELECT);
@@ -835,7 +863,9 @@ static void pause_frame(void) {
 /* ---- death: a dust cloud, a moment, then the level again (or the end) */
 static void death_enter(void) {
     unsigned char i;
-    k_sfx(SFX_LOSE);
+    hush();
+    ses_ses(15);
+    ses_efekt(sfx_olum);
     for (i = 0; i < NFX; ++i) fx_t[i] = 0;
     for (i = 0; i < NFX; ++i) {
         fx_add(1, hero_x, hero_y);
@@ -864,7 +894,7 @@ static void death_frame(void) {
 /* ---- level end: the time left counts into the points, then the stars */
 static unsigned char got;                 /* stars won */
 static void clear_enter(void) {
-    k_sfx(SFX_WIN);
+    play(mus_bolum);
     k_hide_sprites(SPR_FX);
     box_open();
     k_print(box_x + 4, 10, "BOLUM TAMAM!", 1);
@@ -882,7 +912,7 @@ static void clear_frame(void) {
         if (st_t > 30) {
             i = time_left > 2 ? 2 : time_left;
             time_left -= i; score += i * 2;
-            if ((st_t & 3) == 0) k_sfx(SFX_TICK);
+            if ((st_t & 3) == 0) ses_efekt(sfx_tik);
         }
         k_print_num(box_x + 8, 12, time_left, 3, 1);
         k_print_num(box_x + 8, 13, score, 5, 1);
@@ -896,7 +926,7 @@ static void clear_frame(void) {
     for (i = 0; i < 3; ++i)
         if (st_t == 50 + i * 20) {
             k_tile(box_x + 7 + i * 2, 15, i < got ? T_istar : T_istar0, PAL_ICON);
-            if (i < got) k_sfx(SFX_PICKUP);
+            if (i < got) ses_efekt(sfx_yildiz);
         }
     if (st_t < 120 || (st_t < 400 && !pressed(BTN_START | BTN_A))) return;
     if (got > stars[level]) stars[level] = got;
@@ -911,6 +941,8 @@ static void over_enter(void) {
     if (score > best) { best = score; new_best = 1; }
     save_write();
     screen_reset();
+    song_now = 0;
+    play(last_won ? mus_bolum : mus_bitti);
     set_mine_palettes(lv_mine[level]);
     big_center(6, last_won ? "TEBRIKLER" : "OYUN BITTI");
     if (last_won) center(10, "BUTUN OCAKLAR TAMAM!", 2);

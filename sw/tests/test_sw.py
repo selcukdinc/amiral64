@@ -122,7 +122,7 @@ def load_low(name):
 
 k, S = load_low("kristal")
 check("kristal: fits below $8000 (loads at $0400)", len(rom("game_kristal.bin")) <= 0x7C00)
-run(k, 40, shot="kristal_title.png")
+run(k, 60, shot="kristal_title.png")              # (the extra data, 8 KB, is read in first)
 check("kristal: title screen", "KRISTALLERI TOPLA" in screen_text(k), screen_text(k))
 check("kristal: crystals fall behind the title", sum(1 for i in range(8, 16) if k.rd(0x300 + 4 * i) < 240) >= 4)
 ST_TITLE, ST_DEMO, ST_SELECT, ST_CARD, ST_PLAY, ST_PAUSE, ST_DEATH, ST_CLEAR, ST_OVER = range(9)
@@ -239,7 +239,7 @@ check("kristal: save area: level 2 open, three stars on level 1", save[0:2] == b
 # switched on again (RAM kept): the save is read
 k, S = load_low("kristal")
 k.ram[0x2E8:0x2F7] = save
-run(k, 40)
+run(k, 60)
 check("kristal: the best score on the title", "REKOR" in screen_text(k))
 tap(0x10, player=1); run(k, 10)
 txt = screen_text(k)
@@ -249,11 +249,11 @@ check("kristal: the opened level can be chosen", st() == ST_CARD and "KAYA YOLU"
 # a wrong check byte: the save is not used
 k, S = load_low("kristal")
 k.ram[0x2E8:0x2F7] = save[:14] + bytes([save[14] ^ 1])
-run(k, 40); tap(0x10, player=1); run(k, 10)
+run(k, 60); tap(0x10, player=1); run(k, 10)
 check("kristal: a broken save is not used", screen_text(k).count("KILITLI") == 8)
 # left alone, the title plays a demo: the first level by itself, the door opens; a key ends it
 k, S = load_low("kristal")
-run(k, 660)
+run(k, 680)
 check("kristal: the title starts a demo when left alone", st() == ST_PLAY and peek(k, S, "demo") == 1 and "DEMO" in screen_text(k))
 # the demo is the level's solution: it collects the crystals and goes out of the door, then the title again
 most = opened = 0; died = False
@@ -269,7 +269,7 @@ check("kristal: a key ends the demo", st() == ST_TITLE)
 
 # Faz 6: cracked walls and dynamite, set up on level 1 by writing the map
 k, S = load_low("kristal")
-run(k, 40); tap(0x10, player=1); run(k, 10); tap(0x10); run(k, 30); tap(0x80); run(k, 10)
+run(k, 60); tap(0x10, player=1); run(k, 10); tap(0x10); run(k, 30); tap(0x80); run(k, 10)
 EMPTY, DIRT, WALL, ROCK, GEM, GEM2, EXIT, HERO, CRACK, DYN, LIT, GAS, BOOM = range(13)
 setc = lambda x, y, v: k.wr(S["_map"] + y * W + x, v)
 # a rock over a gap over a cracked wall, walled in at the sides
@@ -307,7 +307,7 @@ check("kristal: the blast kills the miner", st() == ST_DEATH and "PATLADIN" in s
 
 # Faz 7: firedamp and mine carts, on a fresh level 1
 k, S = load_low("kristal")
-run(k, 40); tap(0x10, player=1); run(k, 10); tap(0x10); run(k, 30); tap(0x80); run(k, 10)
+run(k, 60); tap(0x10, player=1); run(k, 10); tap(0x10); run(k, 30); tap(0x80); run(k, 10)
 RAIL, CART = 13, 14
 setc = lambda x, y, v: k.wr(S["_map"] + y * W + x, v)
 setr = lambda x, y, v: k.wr(S["_rail"] + y * W + x, v)
@@ -364,7 +364,7 @@ def kristal_save(unlocked, stars=(0,) * 9, best=0):
     return bytes(b + [c])
 k, S = load_low("kristal")
 k.ram[0x2E8:0x2F7] = kristal_save(7)
-run(k, 40); tap(0x10, player=1); run(k, 10)
+run(k, 60); tap(0x10, player=1); run(k, 10)
 for _ in range(6): tap(0x01)
 tap(0x10); run(k, 30); tap(0x80); run(k, 10)
 attr = lambda x, y: k.ppu.vram[0x4000 + 2 * ((2 + 2 * y) * 64 + 2 * x) + 1]
@@ -409,7 +409,7 @@ for i, name in enumerate(sorted(os.listdir(LV))):
     moves = decode(keys["solution"])
     k, S = load_low("kristal")
     k.ram[0x2E8:0x2F7] = kristal_save(9)
-    run(k, 40); tap(0x10, player=1); run(k, 10)
+    run(k, 60); tap(0x10, player=1); run(k, 10)
     for _ in range(i): tap(0x01)
     tap(0x10); run(k, 30); tap(0x80); run(k, 3)
     ok_start = st() == ST_PLAY and peek(k, S, "level") == i
@@ -919,7 +919,7 @@ def plays_music(k, S, frames=120):
     run(k, frames)
     loud = {r >> 2 for f, r, v in k.apu_log if r < 16 and (r & 3) == 2 and v & 15}
     return k.rd(S["_ses_playing"]) == 1 and len(loud) >= 2, loud
-for g, low in (("blok", 0), ("yildiz", 0), ("fitil", 0), ("olimpiyat", 0), ("koridor", 1), ("tilsim", 1)):
+for g, low in (("blok", 0), ("yildiz", 0), ("fitil", 0), ("olimpiyat", 0), ("koridor", 1), ("tilsim", 1), ("kristal", 1)):
     k, S = load_low(g) if low else load_game(g)
     ok, loud = plays_music(k, S)
     check(f"{g}: its title music plays (channels {sorted(loud)})", ok)
