@@ -69,7 +69,7 @@ $(B)/konsolx.lib: $(B)/bigtext.o $(B)/vunpack.o $(B)/ses.o $(B)/ses_std.o $(B)/k
 # games bigger than 20 KB load at $0400 instead of $9000 (game_c_low.cfg; the cartridge entry says where)
 LOW_GAMES = tilsim koridor kristal
 # games whose music goes to the cartridge's extra data (game_c_ek.cfg: read in by k_ek_yukle at $B000)
-EK_GAMES = tilsim
+EK_GAMES = tilsim kristal
 GAME_CFG = $(if $(filter $(1),$(EK_GAMES)),game_c_ek.cfg,$(if $(filter $(1),$(LOW_GAMES)),game_c_low.cfg,game_c.cfg))
 # extra assembly parts of a game: sw/games/<name>/*.s
 $(B)/koridor/%.o: games/koridor/%.s | $(B)

@@ -15,7 +15,10 @@
  * moving, A held restarts the level (costs a life), Start pauses, Select + Start goes back to the menu. */
 #include "konsol.h"
 #include "bigtext.h"
+/* the pictures and palettes live in the cartridge's extra data (read in at $B000 by k_ek_yukle) */
+#pragma rodata-name (push, "EKDATA")
 #include "art.h"
+#pragma rodata-name (pop)
 
 #define W 32
 #define H 13
@@ -904,6 +907,7 @@ static void go(unsigned char s) {
 }
 
 void main(void) {
+    k_ek_yukle();
     k_init();
     PPU_CTRL = 0;
     k_vunpack(TILE_BASE * 32, tiles_data);
