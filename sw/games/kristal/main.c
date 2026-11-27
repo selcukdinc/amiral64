@@ -6,6 +6,9 @@
  * Some dirt hides firedamp (a slightly different shade): dug, the gas spreads for four steps, then blows
  * up like dynamite. Mine carts run to and fro on the rails, push the rock in front of them, run the
  * miner over, and stop while a rock lies on them; the miner cannot ride them.
+ * The Lava Depths are dark: the lantern lights about three cells round the miner, further cells are
+ * drawn with dim palettes and only crystals glow a little. The oil burns down with the time and the
+ * light shrinks; oil bottles fill the lantern. Each step only the cells whose light changed are drawn.
  * The miner walks smoothly from cell to cell; dust flies where rocks land, crystals sparkle, the exit
  * door slides open. Three mines with their own colours.
  * Screens: title (with a demo when left alone), mine select, level card, play, pause menu, death,
@@ -15,6 +18,7 @@
  * moving, A held restarts the level (costs a life), Start pauses, Select + Start goes back to the menu. */
 #include "konsol.h"
 #include "bigtext.h"
+#pragma static-locals (on)      /* locals in fixed places: much faster in cc65, and nothing here recurses */
 /* the pictures and palettes live in the cartridge's extra data (read in at $B000 by k_ek_yukle) */
 #pragma rodata-name (push, "EKDATA")
 #include "art.h"
@@ -39,6 +43,9 @@ enum { EMPTY, DIRT, WALL, ROCK, GEM, GEM2, EXIT, HERO, CRACK, DYN, LIT, GAS, BOO
 #define PAL_ICON 13
 #define PAL_FX   14
 #define PAL_BIG  15
+#define PAL_DT   7           /* in the dark: terrain, specials, crystals (dimmed copies) */
+#define PAL_DS   9
+#define PAL_DC   10
 
 /* sprites: 0 the miner, 1-4 sparkles and dust, 8-15 title crystals */
 #define SPR_HERO 0
@@ -116,6 +123,14 @@ unsigned char rail[H][W];                                     /* RAIL or EMPTY: 
 static unsigned char cart_step;
 #define VACATE(x, y) (map[y][x] = rail[y][x])
 static unsigned cam, cam_target;
+/* the lantern: dark level, oil, the light now drawn (centre and radius squared + radius) */
+unsigned char dark, oil, loops;
+static unsigned char lx, ly, lrr;
+/* distance squared by cell distance (far = more than any reach); statics, no calls: this runs a lot */
+static const unsigned char sq[32] = { 0, 1, 4, 9, 16, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+                                      99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99 };
+static unsigned char lt_d;
+#define DIST2(a, b) (lt_d = (a) > (b) ? (a) - (b) : (b) - (a), sq[lt_d & 31])
 static unsigned char exit_x, exit_y, exit_stage, tick, frames60, anim;
 /* the miner on screen: where he came from, which way he faces, what he does */
 static unsigned char from_x, from_y, face, act;       /* face: 0 down 1 up 2 right 3 left; act: 0 walk 1 dig 2 push */
@@ -127,16 +142,22 @@ static unsigned crystal_cols[4];
 static const unsigned char slide[TICK] = { 0, 3, 5, 8, 11, 13 };   /* pixels moved within a step */
 
 /* ---------------------------------------------------------------- drawing */
+static unsigned char pb_lo, pb_hi;
 static void put_big(unsigned char x, unsigned char y, unsigned char t, unsigned char pal) {
-    unsigned a = 0x4000 + ((unsigned)(FIELD_ROW + 2 * y) << 7) + ((unsigned)x << 2);
-    k_vaddr(a); PPU_VDATA = t; PPU_VDATA = pal; PPU_VDATA = t + 1; PPU_VDATA = pal;
-    k_vaddr(a + 128); PPU_VDATA = t + 2; PPU_VDATA = pal; PPU_VDATA = t + 3; PPU_VDATA = pal;
+    /* tile map row FIELD_ROW + 2y (128 bytes a row), column 2x: $4000 + (FIELD_ROW + 2y) * 128 + 4x;
+     * the row is even, so its start is a multiple of 256 */
+    pb_lo = x << 2;
+    pb_hi = 0x40 + ((FIELD_ROW + 2 * y) >> 1);
+    PPU_VADDR_L = pb_lo; PPU_VADDR_H = pb_hi;
+    PPU_VDATA = t; PPU_VDATA = pal; PPU_VDATA = t + 1; PPU_VDATA = pal;
+    PPU_VADDR_L = pb_lo | 0x80; PPU_VADDR_H = pb_hi;
+    PPU_VDATA = t + 2; PPU_VDATA = pal; PPU_VDATA = t + 3; PPU_VDATA = pal;
 }
 
 static unsigned char open_cell(unsigned char k) { return k == EMPTY || k == HERO || k == BOOM || k == RAIL; }
 
 static void draw_cell(unsigned char x, unsigned char y) {
-    unsigned char c = map[y][x], k = KIND(c), t, p = PAL_T, h = (x * 7 + y * 13 + (x >> 2)) & 3;
+    unsigned char c = map[y][x], k = KIND(c), t, p = PAL_T, h = (x + (x << 1) + y + (x >> 2)) & 3;   /* = x*7 + y*13 + x/4 */
     switch (k) {
     case DIRT:
         t = (y && open_cell(KIND(map[y - 1][x]))) ? (h & 1 ? T_dirtlit1 : T_dirtlit0) : T_dirt0 + h * 4;
@@ -158,6 +179,7 @@ static void draw_cell(unsigned char x, unsigned char y) {
         if (rail[y][x]) { t = T_rail; p = PAL_S; }
         else t = h & 1 ? T_back1 : T_back0;
     }
+    if (dark && DIST2(x, lx) + DIST2(y, ly) > lrr) p = p == PAL_C ? PAL_DC : p == PAL_S ? PAL_DS : PAL_DT;
     put_big(x, y, t, p);
 }
 
@@ -234,6 +256,7 @@ static void cycle_colours(void) {
 /* a few random cells a frame: a crystal in view sparkles now and then */
 static void sparkle(void) {
     unsigned char x = (cam >> 4) + k_rand() % 20, y = k_rand() % H;
+    if (dark && DIST2(x, lx) + DIST2(y, ly) > lrr) return;
     if (x < W && (KIND(map[y][x]) == GEM || KIND(map[y][x]) == GEM2) && (k_rand() & 3) == 0) fx_add(0, x, y);
 }
 
@@ -262,18 +285,70 @@ static void draw_hero(void) {
 }
 
 /* ---------------------------------------------------------------- the level */
+/* a dimmed copy of a palette: shift 2 = a quarter (the dark), 1 = a half (crystals glowing) */
+static unsigned dim_cols[16];
+static void dim_palette(unsigned char pal, const unsigned *src, unsigned char shift) {
+    unsigned char i;
+    unsigned m = shift == 1 ? 0x777 : 0x333;
+    for (i = 0; i < 16; ++i) dim_cols[i] = (src[i] >> shift) & m;
+    k_palette(pal, dim_cols, 16);
+}
+
 static void set_mine_palettes(unsigned char mine) {
     unsigned char i;
     k_palette(PAL_T, pal_mine[mine][0], 16);
     k_palette(PAL_C, pal_mine[mine][1], 16);
     k_palette(PAL_S, pal_mine[mine][2], 16);
+    dim_palette(PAL_DT, pal_mine[mine][0], 2);
+    dim_palette(PAL_DS, pal_mine[mine][2], 2);
+    dim_palette(PAL_DC, pal_mine[mine][1], 1);
     for (i = 0; i < 4; ++i) crystal_cols[i] = pal_mine[mine][1][5 + i];
+}
+
+/* the lantern's reach from its oil: 3 cells, then 2, then 1 */
+static unsigned char lantern_rr(void) { return oil > 60 ? 12 : oil > 25 ? 6 : 2; }
+
+/* the miner moved or the light shrank: draw again only the cells whose light changed. Row by row the lit
+ * cells are a span centre +- width (width from what the radius leaves after the row's distance), so
+ * only the cells in one span and not the other are drawn. */
+static const unsigned char span_w[17] = { 0, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4 };
+static unsigned char ul_x, ul_y, ul_y1, ul_ox, ul_oy, ul_orr, ul_d, ul_a0, ul_a1, ul_b0, ul_b1, ul_lo, ul_hi;
+static void update_light(void) {
+    unsigned char rr = lantern_rr();
+    if (!dark || (hero_x == lx && hero_y == ly && rr == lrr)) return;
+    ul_ox = lx; ul_oy = ly; ul_orr = lrr;
+    lx = hero_x; ly = hero_y; lrr = rr;
+    ul_y = ul_oy < ly ? ul_oy : ly; ul_y = ul_y > 4 ? ul_y - 4 : 0;
+    ul_y1 = (ul_oy > ly ? ul_oy : ly) + 4; if (ul_y1 > H - 1) ul_y1 = H - 1;
+    for (; ul_y <= ul_y1; ++ul_y) {
+        /* the old span [a0, a1] and the new one [b0, b1] (a1 < a0: none) */
+        ul_d = DIST2(ul_y, ul_oy);
+        if (ul_d <= ul_orr) { ul_d = span_w[ul_orr - ul_d]; ul_a0 = ul_ox > ul_d ? ul_ox - ul_d : 0; ul_a1 = ul_ox + ul_d; }
+        else { ul_a0 = 1; ul_a1 = 0; }
+        ul_d = DIST2(ul_y, ly);
+        if (ul_d <= lrr) { ul_d = span_w[lrr - ul_d]; ul_b0 = lx > ul_d ? lx - ul_d : 0; ul_b1 = lx + ul_d; }
+        else { ul_b0 = 1; ul_b1 = 0; }
+        if (ul_a0 == ul_b0 && ul_a1 == ul_b1) continue;
+        ul_lo = ul_a0 < ul_b0 ? ul_a0 : ul_b0; if (ul_a1 < ul_a0) ul_lo = ul_b0; if (ul_b1 < ul_b0) ul_lo = ul_a0;
+        ul_hi = ul_a1 > ul_b1 ? ul_a1 : ul_b1;
+        if (ul_hi > W - 1) ul_hi = W - 1;
+        for (ul_x = ul_lo; ul_x <= ul_hi; ++ul_x)
+            if ((ul_x >= ul_a0 && ul_x <= ul_a1) != (ul_x >= ul_b0 && ul_x <= ul_b1)) draw_cell(ul_x, ul_y);
+    }
+}
+
+static void oil_hud(void) {
+    if (!dark) return;
+    k_tile(12, 1, T_ioil, PAL_ICON);
+    k_print_num(14, 1, oil, 2, oil > 25 ? 0 : 3);
 }
 
 static void load_level(void) {
     unsigned char x, y;
     char c;
     gems = 0; gems_total = 0; exit_open = 0; exit_stage = 0; alive = 1; won = 0; moving = 0; face = 0; act = 0;
+    dark = lv_mine[level] == 2; oil = 99;
+    lx = 0; ly = 0; lrr = lantern_rr();             /* (lx, ly set below, once the miner is found) */
     snap = 0; time_left = lv_time[level]; frames60 = 0; tick = 0; shake = 0; dyns = 0; blasted = 0;
     for (x = 0; x < NFUSE; ++x) fuse_t[x] = 0;
     cart_step = 0;
@@ -296,14 +371,17 @@ static void load_level(void) {
             case 'G': map[y][x] = GAS; break;
             case 'R': map[y][x] = RAIL; break;
             case 'A': map[y][x] = CART | CART_R; break;
+            case 'Y': map[y][x] = OIL; break;
             default: map[y][x] = EMPTY;
             }
         }
     from_x = hero_x; from_y = hero_y;
+    lx = hero_x; ly = hero_y;
     for (y = 0; y < H; ++y)
         for (x = 0; x < W; ++x) draw_cell(x, y);
     hud_static();
     hud();
+    oil_hud();
     cam = hero_x > 9 ? (hero_x - 9) * 16 : 0;
     if (cam > 192) cam = 192;
 }
@@ -340,6 +418,8 @@ static void cart(void) {
     if (d > 0) ++ph_x;                               /* not moved twice */
 }
 
+/* the kinds the scan has something to do with (most cells are dirt, wall or empty) */
+static const unsigned char active[16] = { 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0 };
 static void physics(void) {
     ++cart_step;
     for (ph_y = H - 2; ph_y > 0; --ph_y) {
@@ -347,6 +427,7 @@ static void physics(void) {
         for (ph_x = 1; ph_x < W - 1; ++ph_x) {
             ph_c = row[ph_x];
             ph_k = ph_c & 0x0F;
+            if (!active[ph_k]) continue;
             if (ph_k == BOOM || ph_k == CRACK) {
                 /* a blast burns for two steps; a cracked wall that was hit falls apart */
                 if (ph_c & WOBBLE) { VACATE(ph_x, ph_y); redraw(ph_x, ph_y); if (ph_k == CRACK) fx_add(1, ph_x, ph_y); }
@@ -456,6 +537,7 @@ static void collect(unsigned char x, unsigned char y, unsigned char t) {
 }
 
 static void take_dyn(void) { ++dyns; k_sfx(SFX_PICKUP); hud(); }
+static void take_oil(void) { oil = oil > 59 ? 99 : oil + 40; k_sfx(SFX_PICKUP); oil_hud(); }
 
 /* B + direction: dig the dirt or take what is next to the miner and stay put; on an empty cell, place
  * a stick of dynamite (it burns for three steps after this one) */
@@ -468,6 +550,7 @@ static void snap_at(signed char dx, signed char dy) {
     else if (t == GAS) gas_out(nx, ny, 5);
     else if (t == GEM || t == GEM2) collect(nx, ny, t);
     else if (t == DYN) take_dyn();
+    else if (t == OIL) take_oil();
     else return;
     VACATE(nx, ny);
     redraw(nx, ny);
@@ -477,7 +560,7 @@ static void move_hero(signed char dx, signed char dy) {
     unsigned char nx = hero_x + dx, ny = hero_y + dy, t = KIND(map[ny][nx]);
     face = dy > 0 ? 0 : dy < 0 ? 1 : dx > 0 ? 2 : 3;
     act = 0;
-    if (t != EMPTY && t != DIRT && t != ROCK && t != GEM && t != GEM2 && t != EXIT && t != DYN && t != GAS && t != RAIL)
+    if (t != EMPTY && t != DIRT && t != ROCK && t != GEM && t != GEM2 && t != EXIT && t != DYN && t != GAS && t != RAIL && t != OIL)
         return;
     if (t == ROCK) {
         /* push sideways into an empty cell */
@@ -494,6 +577,7 @@ static void move_hero(signed char dx, signed char dy) {
         k_sfx(SFX_TICK);
         act = 1;
     } else if (t == DYN) take_dyn();
+    else if (t == OIL) take_oil();
     else if (t == GAS) { k_sfx(SFX_TICK); act = 1; gas_out(nx, ny, 5); }
     VACATE(hero_x, hero_y);
     from_x = hero_x; from_y = hero_y;
@@ -513,31 +597,35 @@ static void move_hero(signed char dx, signed char dy) {
 static unsigned char unlocked, stars[9];
 static unsigned best;
 
+/* the save is only ever copied byte by byte (indexed $02E8,y) to and from sv[]: cc65's optimizer got
+ * reads through a pointer to it wrong (it kept a stale ptr1 across a call) */
+static unsigned char sv[15];
+
 static unsigned char save_sum(void) {
     unsigned char i, c = 0x5A;
-    for (i = SV_OPEN; i < SV_CHECK; ++i) c = (c << 1 | c >> 7) ^ SAVE[i];
+    for (i = SV_OPEN; i < SV_CHECK; ++i) c = (c << 1 | c >> 7) ^ sv[i];
     return c;
 }
 
 static void save_read(void) {
     unsigned char i;
+    for (i = 0; i < 15; ++i) sv[i] = SAVE[i];
     unlocked = 1; best = 0;
     for (i = 0; i < 9; ++i) stars[i] = 0;
-    if (SAVE[0] != 'K' || SAVE[1] != 'O' || SAVE[SV_CHECK] != save_sum()) return;
-    /* best first: cc65's optimizer reads SAVE[...] after a loop over it through a stale pointer */
-    best = SAVE[SV_BEST] | (unsigned)SAVE[SV_BEST + 1] << 8;
-    unlocked = SAVE[SV_OPEN];
+    if (sv[0] != 'K' || sv[1] != 'O' || sv[SV_CHECK] != save_sum()) return;
+    best = sv[SV_BEST] | (unsigned)sv[SV_BEST + 1] << 8;
+    unlocked = sv[SV_OPEN];
     if (unlocked < 1 || unlocked > NLEVEL) unlocked = 1;
-    for (i = 0; i < 9; ++i) stars[i] = SAVE[SV_STARS + i] > 3 ? 0 : SAVE[SV_STARS + i];
+    for (i = 0; i < 9; ++i) stars[i] = sv[SV_STARS + i] > 3 ? 0 : sv[SV_STARS + i];
 }
 
 static void save_write(void) {
     unsigned char i;
-    SAVE[0] = 'K'; SAVE[1] = 'O'; SAVE[SV_OPEN] = unlocked;
-    SAVE[SV_BEST] = (unsigned char)best; SAVE[SV_BEST + 1] = best >> 8;
-    for (i = 0; i < 9; ++i) SAVE[SV_STARS + i] = stars[i];
-    i = save_sum();
-    SAVE[SV_CHECK] = i;
+    sv[0] = 'K'; sv[1] = 'O'; sv[SV_OPEN] = unlocked;
+    sv[SV_BEST] = (unsigned char)best; sv[SV_BEST + 1] = best >> 8;
+    for (i = 0; i < 9; ++i) sv[SV_STARS + i] = stars[i];
+    sv[SV_CHECK] = save_sum();
+    for (i = 0; i < 15; ++i) SAVE[i] = sv[i];
 }
 
 /* ---------------------------------------------------------------- the state machine */
@@ -727,6 +815,7 @@ static void play_frame(void) {
         frames60 = 0;
         if (time_left) --time_left;
         if (!time_left) alive = 0;
+        if (dark && oil) { --oil; oil_hud(); }
         hud();
     } else if (time_left <= 20 && (frames60 & 31) == 0) hud();
     if (exit_open && exit_stage < 3 && (anim & 7) == 0) { ++exit_stage; draw_cell(exit_x, exit_y); }
@@ -751,9 +840,9 @@ static void play_frame(void) {
         else if (dir & BTN_DOWN) move_hero(0, 1);
         else if (dir & BTN_LEFT) move_hero(-1, 0);
         else if (dir & BTN_RIGHT) move_hero(1, 0);
+        update_light();
         fuses();
-        physics();
-    }
+    } else if (tick == 1) physics();      /* the step's second half: a frame on its own (Faz 8: fits in a frame) */
     draw_hero();
     fx_draw();
     if (demo) return;
@@ -924,7 +1013,7 @@ void main(void) {
     go(ST_TITLE);
     for (;;) {
         k_wait_frame();
-        ++anim; ++st_t;
+        ++anim; ++st_t; ++loops;
         if (((pad[0] | pad[1]) & (BTN_SELECT | BTN_START)) == (BTN_SELECT | BTN_START)) k_menu();
         switch (state) {
         case ST_TITLE: title_frame(); break;

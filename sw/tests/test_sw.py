@@ -160,7 +160,7 @@ hy = lambda: peek(k, S, "hero_y")
 # (the OAM the PPU shows: copied by DMA in the NMI)
 xs = []
 k.pads[0] = 0x01
-for _ in range(14):
+for _ in range(20):
     run(k, 1); xs.append(k.ppu.vram[0x5201] | (0x100 if k.ppu.vram[0x5203] & 0x80 else 0))
 k.pads[0] = 0; run(k, 2)
 steps = [b - a for a, b in zip(xs, xs[1:])]
@@ -347,6 +347,47 @@ f = 0
 while f < 150 and st() == ST_PLAY:
     run(k, 1); f += 1
 check("kristal: the cart runs the miner over", st() == ST_DEATH, f"state={st()} row={row10()}")
+
+# Faz 8: the Lava Depths are dark; a save that opens level 3
+def kristal_save(unlocked, stars=(0,) * 9, best=0):
+    b = [ord("K"), ord("O"), unlocked] + list(stars) + [best & 255, best >> 8]
+    c = 0x5A
+    for v in b[2:]:
+        c = (((c << 1) | (c >> 7)) & 255) ^ v
+    return bytes(b + [c])
+k, S = load_low("kristal")
+k.ram[0x2E8:0x2F7] = kristal_save(3)
+run(k, 40); tap(0x10, player=1); run(k, 10); tap(0x01); tap(0x01); tap(0x10); run(k, 30); tap(0x80); run(k, 10)
+attr = lambda x, y: k.ppu.vram[0x4000 + 2 * ((2 + 2 * y) * 64 + 2 * x) + 1]
+check("kristal: level 3 is dark", st() == ST_PLAY and peek(k, S, "dark") == 1 and peek(k, S, "level") == 2 and "OCAK 3-1" in screen_text(k))
+check("kristal: the lantern lights the cells round the miner", attr(2, 1) in (4, 5, 6) and attr(3, 2) in (4, 5, 6) and attr(1, 4) in (4, 5, 6),
+      [attr(x, 1) for x in range(1, 9)])
+check("kristal: far cells are dim, far crystals glow a little", attr(9, 5) == 7 and attr(13, 1) == 10, f"{attr(9, 5)} {attr(13, 1)}")
+pv = lambda p, i: k.ppu.vram[0x5000 + p * 32 + 2 * i] | k.ppu.vram[0x5000 + p * 32 + 2 * i + 1] << 8
+check("kristal: the dark palettes are dimmed copies", pv(7, 6) < pv(4, 6) and pv(10, 6) < pv(5, 6) and pv(7, 6) != 0, f"{pv(7, 6):03x} {pv(4, 6):03x}")
+run(k, 1, shot="kristal_dark.png")
+# walking: the light goes with the miner; each step's work fits in a frame (a main-loop pass every frame)
+# (level 3: right 2, down 2, right 6 under the rocks, which fall behind)
+l0 = peek(k, S, "loops"); f0 = k.frames
+for mask, until in ((0x01, lambda: hx() == 3), (0x04, lambda: hy() == 3), (0x01, lambda: hx() == 9)):
+    walk(mask, until, limit=40)
+l1 = peek(k, S, "loops"); nf = k.frames - f0
+check("kristal: in the dark every frame gets its main-loop pass (a step fits in a frame)", (l1 - l0) & 255 == nf & 255,
+      f"{(l1 - l0) & 255}/{nf & 255}")
+run(k, 30)
+check("kristal: the light went with the miner", (hx(), hy()) == (9, 3) and attr(9, 5) in (4, 5, 6) and attr(1, 1) == 7 and attr(2, 1) == 7,
+      f"({hx()},{hy()}) {attr(9, 5)} {attr(1, 1)}")
+# the oil runs low: the light shrinks to two cells; a bottle fills the lantern
+lit = lambda x, y: attr(x, y) in (4, 5, 6)
+check("kristal: full oil: the light reaches three cells", lit(9, 6) and lit(11, 4), f"{attr(9, 6)} {attr(11, 4)}")
+k.wr(S["_oil"], 20); run(k, 70)
+check("kristal: low oil: the light shrinks", not lit(9, 6) and not lit(11, 4) and lit(9, 4) and lit(10, 3)
+      and int(screen_text(k).splitlines()[1][14:16]) <= 20, f"{attr(9, 6)} {attr(11, 4)} {screen_text(k).splitlines()[1]}")
+setc = lambda x, y, v: k.wr(S["_map"] + y * W + x, v)
+OIL = 15
+setc(hx() - 1, hy(), OIL)
+x0 = hx(); walk(0x02, lambda: hx() == x0 - 1, limit=20)
+check("kristal: an oil bottle fills the lantern", peek(k, S, "oil") >= 59, f"oil={peek(k, S, 'oil')}")
 
 k, S = load_game("yildiz")
 check("yildiz: fits in 20 KB", len(rom("game_yildiz.bin")) <= 0x5000)
