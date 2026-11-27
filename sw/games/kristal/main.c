@@ -2,7 +2,11 @@
  * Rocks and crystals fall and roll; a rock wobbles once before it falls, and a falling rock is deadly.
  * The miner walks smoothly from cell to cell; dust flies where rocks land, crystals sparkle, the exit
  * door slides open. Three mines with their own colours.
- * Pad: directions move, Start pauses, Select + Start goes back to the menu. */
+ * Screens: title (with a demo when left alone), mine select, level card, play, pause menu, death,
+ * level end (time left into points, 1-3 stars), game over. Unlocked levels, stars and the best score are
+ * kept in RAM at $02E8 while the board is on.
+ * Pad: directions move (an early press is kept for the next step), B + direction digs or collects without
+ * moving, A held restarts the level (costs a life), Start pauses, Select + Start goes back to the menu. */
 #include "konsol.h"
 #include "bigtext.h"
 #include "art.h"
@@ -71,7 +75,18 @@ static const char *const levels[3][H] = {
     "W.......................E......W",
     "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" },
 };
-static const unsigned char need[3] = { 10, 14, 18 };
+#define NLEVEL 3
+static const unsigned char need[NLEVEL] = { 10, 14, 18 };
+static const unsigned char lv_mine[NLEVEL] = { 0, 1, 2 };     /* which mine (colours, select screen row) */
+static const unsigned char lv_num[NLEVEL] = { 1, 1, 1 };      /* its number in the mine */
+static const unsigned char lv_time[NLEVEL] = { 150, 150, 150 };
+static const char *const lv_name[NLEVEL] = { "ILK KAZI", "BUZ KOPRUSU", "KAYA YAGMURU" };
+static const char *const lv_intro[NLEVEL] = {
+    "KAZ, TOPLA, SALLANAN KAYADAN KAC",
+    "CTRL + YON: YERINDEN KIPIRDAMADAN KAZ",
+    "TAKILIRSAN SHIFT BASILI: YENIDEN",
+};
+static const char *const mine_name[3] = { "TOPRAK OCAK", "BUZ MAGARASI", "LAV DERINLIGI" };
 static const unsigned *const pal_mine[3][3] = {
     { pal_terrain, pal_crystal, pal_special },
     { pal_terrain_buz, pal_crystal_buz, pal_special_buz },
@@ -81,6 +96,7 @@ static const unsigned *const pal_mine[3][3] = {
 unsigned char map[H][W];
 unsigned char hero_x, hero_y, gems, level, lives, alive, exit_open, won;
 unsigned score, time_left;
+unsigned char gems_total, died_here, snap;              /* crystals the level has; a life lost in it; B dig */
 static unsigned cam, cam_target;
 static unsigned char exit_x, exit_y, exit_stage, tick, frames60, anim;
 /* the miner on screen: where he came from, which way he faces, what he does */
@@ -138,7 +154,7 @@ static void hud_static(void) {
     k_tile(10, 0, T_iclock, PAL_ICON);
     k_tile(16, 0, T_iheart, PAL_ICON);
     k_print(21, 0, "PUAN", 1);
-    k_print(1, 1, "OCAK", 2);
+    k_print(1, 1, "OCAK  -", 2);
 }
 
 static void hud(void) {
@@ -147,7 +163,8 @@ static void hud(void) {
     k_print_num(12, 0, time_left, 3, time_left <= 20 && (frames60 & 32) ? 3 : 0);
     k_print_num(18, 0, lives, 1, 0);
     k_print_num(26, 0, score, 5, 0);
-    k_print_num(6, 1, level + 1, 1, 2);
+    k_print_num(6, 1, lv_mine[level] + 1, 1, 2);
+    k_print_num(8, 1, lv_num[level], 1, 2);
     k_seg_number(score);
 }
 
@@ -209,7 +226,7 @@ static void draw_hero(void) {
     if (!alive) pat = S_crushed;
     else if (won) pat = S_cheer;
     else if (face >= 2) {
-        if (act == 1 && moving) pat = tick < 3 ? S_digup : S_digdn;
+        if (snap || (act == 1 && moving)) pat = tick < 3 ? S_digup : S_digdn;
         else if (act == 2 && moving) pat = S_push;
         else pat = moving && step ? S_side1 : S_side0;
         if (face == 3) attr |= ATTR_FLIPX;
@@ -233,10 +250,10 @@ static void set_mine_palettes(unsigned char mine) {
 static void load_level(void) {
     unsigned char x, y;
     char c;
-    gems = 0; exit_open = 0; exit_stage = 0; alive = 1; won = 0; moving = 0; face = 0; act = 0;
-    time_left = 150; frames60 = 0; tick = 0; shake = 0;
+    gems = 0; gems_total = 0; exit_open = 0; exit_stage = 0; alive = 1; won = 0; moving = 0; face = 0; act = 0;
+    snap = 0; time_left = lv_time[level]; frames60 = 0; tick = 0; shake = 0;
     for (x = 0; x < NFX; ++x) fx_t[x] = 0;
-    set_mine_palettes(level);
+    set_mine_palettes(lv_mine[level]);
     for (y = 0; y < H; ++y)
         for (x = 0; x < W; ++x) {
             c = levels[level][y][x];
@@ -244,8 +261,8 @@ static void load_level(void) {
             case 'W': map[y][x] = WALL; break;
             case '.': map[y][x] = DIRT; break;
             case 'O': map[y][x] = ROCK; break;
-            case '*': map[y][x] = GEM; break;
-            case '+': map[y][x] = GEM2; break;
+            case '*': map[y][x] = GEM; ++gems_total; break;
+            case '+': map[y][x] = GEM2; gems_total += 5; break;
             case 'E': map[y][x] = EXIT; exit_x = x; exit_y = y; break;
             case 'P': map[y][x] = HERO; hero_x = x; hero_y = y; break;
             default: map[y][x] = EMPTY;
@@ -309,6 +326,27 @@ static void physics(void) {
 }
 
 /* ---------------------------------------------------------------- the miner moves */
+static void collect(unsigned char x, unsigned char y, unsigned char t) {
+    gems += t == GEM2 ? 5 : 1;
+    score += t == GEM2 ? 50 : 10;
+    k_sfx(SFX_PICKUP);
+    fx_add(0, x, y);
+    if (gems >= need[level] && !exit_open) { exit_open = 1; k_sfx(SFX_WIN); }
+    hud();
+}
+
+/* B + direction: dig the dirt or take the crystal next to the miner, and stay put */
+static void snap_at(signed char dx, signed char dy) {
+    unsigned char nx = hero_x + dx, ny = hero_y + dy, t = KIND(map[ny][nx]);
+    face = dy > 0 ? 0 : dy < 0 ? 1 : dx > 0 ? 2 : 3;
+    act = 0; snap = 1;
+    if (t == DIRT) k_sfx(SFX_TICK);
+    else if (t == GEM || t == GEM2) collect(nx, ny, t);
+    else return;
+    map[ny][nx] = EMPTY;
+    redraw(nx, ny);
+}
+
 static void move_hero(signed char dx, signed char dy) {
     unsigned char nx = hero_x + dx, ny = hero_y + dy, t = KIND(map[ny][nx]);
     face = dy > 0 ? 0 : dy < 0 ? 1 : dx > 0 ? 2 : 3;
@@ -321,12 +359,7 @@ static void move_hero(signed char dx, signed char dy) {
         draw_cell(nx + dx, ny);
         act = 2;
     } else if (t == GEM || t == GEM2) {
-        gems += t == GEM2 ? 5 : 1;
-        score += t == GEM2 ? 50 : 10;
-        k_sfx(SFX_PICKUP);
-        fx_add(0, nx, ny);
-        if (gems >= need[level] && !exit_open) { exit_open = 1; k_sfx(SFX_WIN); }
-        hud();
+        collect(nx, ny, t);
     } else if (t == EXIT) {
         if (exit_stage < 3) return;
         won = 1;
@@ -343,53 +376,408 @@ static void move_hero(signed char dx, signed char dy) {
     moving = 1;
 }
 
-/* ---------------------------------------------------------------- screens */
-static unsigned char slots[18] = { 0, 4, 8, 12, 16, 20, 24, 28, 216, 220, 224, 228, 232, 236, 240, 244, 248, 252 };
+/* ---------------------------------------------------------------- save data (RAM, kept while the board is on) */
+#define SAVE ((volatile unsigned char *)0x02E8)   /* 'K','O', unlocked levels, stars[9], best score (2), check */
+#define SV_OPEN  2
+#define SV_STARS 3
+#define SV_BEST  12
+#define SV_CHECK 14
+static unsigned char unlocked, stars[9];
+static unsigned best;
 
-static void wait_start(void) {
-    /* both keyboard players (Space or Enter) and pads 1-2 can start */
-    do { k_wait_frame(); } while (!((pad_new[0] | pad_new[1]) & (BTN_START | BTN_A)));
+static unsigned char save_sum(void) {
+    unsigned char i, c = 0x5A;
+    for (i = SV_OPEN; i < SV_CHECK; ++i) c = (c << 1 | c >> 7) ^ SAVE[i];
+    return c;
 }
 
-static void title(void) {
-    unsigned char i, f = 0;
-    static unsigned char gx[8], gy[8], gs[8];
+static void save_read(void) {
+    unsigned char i;
+    unlocked = 1; best = 0;
+    for (i = 0; i < 9; ++i) stars[i] = 0;
+    if (SAVE[0] != 'K' || SAVE[1] != 'O' || SAVE[SV_CHECK] != save_sum()) return;
+    /* best first: cc65's optimizer reads SAVE[...] after a loop over it through a stale pointer */
+    best = SAVE[SV_BEST] | (unsigned)SAVE[SV_BEST + 1] << 8;
+    unlocked = SAVE[SV_OPEN];
+    if (unlocked < 1 || unlocked > NLEVEL) unlocked = 1;
+    for (i = 0; i < 9; ++i) stars[i] = SAVE[SV_STARS + i] > 3 ? 0 : SAVE[SV_STARS + i];
+}
+
+static void save_write(void) {
+    unsigned char i;
+    SAVE[0] = 'K'; SAVE[1] = 'O'; SAVE[SV_OPEN] = unlocked;
+    SAVE[SV_BEST] = (unsigned char)best; SAVE[SV_BEST + 1] = best >> 8;
+    for (i = 0; i < 9; ++i) SAVE[SV_STARS + i] = stars[i];
+    i = save_sum();
+    SAVE[SV_CHECK] = i;
+}
+
+/* ---------------------------------------------------------------- the state machine */
+enum { ST_TITLE, ST_DEMO, ST_SELECT, ST_CARD, ST_PLAY, ST_PAUSE, ST_DEATH, ST_CLEAR, ST_OVER };
+unsigned char state;
+static unsigned st_t;                     /* frames in the current state */
+static unsigned char restart;              /* the level is started again on purpose (A held, pause menu) */
+unsigned char demo;                        /* the title is playing the demo */
+static unsigned char sel, cursor, demo_i, demo_n, hold_a, a_armed, buf, last_won, new_best;
+static unsigned char slots[18] = { 0, 4, 8, 12, 16, 20, 24, 28, 216, 220, 224, 228, 232, 236, 240, 244, 248, 252 };
+static unsigned char gx[8], gy[8], gs[8];
+static char line[24];
+
+static unsigned char pressed(unsigned char m) { return (pad_new[0] | pad_new[1]) & m; }
+
+static void screen_reset(void) {
     k_clear_map();
     k_hide_sprites(0);
     k_split(0, 0, 0);
     cam = 0; k_scroll(0, 0);
-    set_mine_palettes(0);
     big_reset();
+}
+
+static void center(unsigned char y, const char *s, unsigned char pal) {
+    unsigned char n = 0;
+    while (s[n]) ++n;
+    k_print((40 - n) >> 1, y, s, pal);
+}
+
+/* "OCAK m-n" into line */
+static void level_label(unsigned char lv) {
+    unsigned char i;
+    const char *o = "OCAK ";
+    for (i = 0; o[i]; ++i) line[i] = o[i];
+    line[5] = '1' + lv_mine[lv]; line[6] = '-'; line[7] = '0' + lv_num[lv]; line[8] = 0;
+}
+
+static void draw_stars(unsigned char x, unsigned char y, unsigned char n) {
+    unsigned char i;
+    for (i = 0; i < 3; ++i) k_tile(x + i * 2, y, i < n ? T_istar : T_istar0, PAL_ICON);
+}
+
+/* a box over the field (pause menu, level end); the cells under it are drawn again when it closes */
+static unsigned char box_x;
+static void box_open(void) {
+    box_x = (cam >> 3) + 10;
+    k_fill_tiles(box_x, 9, 20, 11, ' ', 0);
+}
+static void box_close(void) {
+    unsigned char x, y;
+    for (y = 3; y <= 9; ++y)
+        for (x = box_x >> 1; x <= (box_x + 20) >> 1 && x < W; ++x) draw_cell(x, y);
+}
+
+/* the demo: the first level played by itself (directions and how many steps) */
+static const unsigned char demo_path[] = {
+    BTN_RIGHT, 5, BTN_DOWN, 1, BTN_RIGHT, 2, BTN_UP, 1, BTN_RIGHT, 6, BTN_DOWN, 1, BTN_RIGHT, 1, BTN_DOWN, 1,
+    BTN_RIGHT, 3, BTN_DOWN, 4, BTN_RIGHT, 6, BTN_UP, 3, BTN_LEFT, 3, BTN_RIGHT, 3, BTN_UP, 2, BTN_RIGHT, 1,
+    BTN_UP, 1, BTN_LEFT, 2, 0, 40,
+};
+
+static void go(unsigned char s);
+
+/* ---- title */
+static void title_enter(void) {
+    unsigned char i;
+    screen_reset();
+    set_mine_palettes(0);
     big_center(4, "KRISTAL");
     big_center(7, "OCAK");
     k_print(7, 12, "KAZ, KRISTALLERI TOPLA,", 0);
     k_print(7, 14, "SALLANAN KAYADAN KAC VE", 0);
     k_print(7, 16, "ACILAN KAPIDAN CIK.", 0);
     k_print(7, 20, "OKLAR / WASD: KAZ, YURU", 2);
+    k_print(7, 21, "CTRL + YON: YERINDE KAZ", 2);
     k_print(9, 24, "SPACE/ENTER: BASLA ", 1);
+    if (best) { k_print(13, 27, "REKOR", 0); k_print_num(19, 27, best, 5, 1); }
     for (i = 0; i < 8; ++i) { gx[i] = 20 + i * 36; gy[i] = k_rand(); gs[i] = 1 + (i & 1); }
-    for (;;) {
-        k_wait_frame(); ++f;
-        big_palette(f < 32 ? f >> 2 : 8);
-        for (i = 0; i < 8; ++i) {               /* crystals fall behind the title */
-            gy[i] += gs[i];
-            k_sprite(8 + i, gx[i], gy[i] < 232 ? gy[i] : 300, S_fgem, PAL_C | SPR_BEHIND);
-        }
-        k_sprite(SPR_HERO, 152, 196, (f >> 4) & 1 ? S_digup : S_digdn, PAL_HERO);
-        if ((pad_new[0] | pad_new[1]) & (BTN_START | BTN_A)) break;
-    }
-    k_hide_sprites(0);
 }
 
-static void message(const char *s) {
-    unsigned char t;
-    k_fill_tiles(0, 1, 40, 1, ' ', 0);
-    k_print(12, 1, s, 3);
-    for (t = 0; t < 90; ++t) { k_wait_frame(); ++anim; draw_hero(); fx_draw(); }
+static void title_frame(void) {
+    unsigned char i;
+    big_palette(st_t < 32 ? st_t >> 2 : 8);
+    for (i = 0; i < 8; ++i) {               /* crystals fall behind the title */
+        gy[i] += gs[i];
+        k_sprite(8 + i, gx[i], gy[i] < 232 ? gy[i] : 300, S_fgem, PAL_C | SPR_BEHIND);
+    }
+    k_sprite(SPR_HERO, 152, 196, (st_t >> 4) & 1 ? S_digup : S_digdn, PAL_HERO);
+    if (pressed(BTN_START | BTN_A)) go(ST_SELECT);
+    else if (st_t >= 600) go(ST_DEMO);
+}
+
+/* ---- mine select */
+static unsigned char slot_x(unsigned char lv) { return 6 + (lv_num[lv] - 1) * 11; }
+static unsigned char slot_y(unsigned char lv) { return 8 + lv_mine[lv] * 6; }
+
+static void select_enter(void) {
+    unsigned char i;
+    screen_reset();
+    set_mine_palettes(0);
+    big_center(2, "OCAK SEC");
+    for (i = 0; i < 3; ++i) k_print(3, 6 + i * 6, mine_name[i], 1);
+    for (i = 0; i < NLEVEL; ++i) {
+        level_label(i);
+        if (i < unlocked) {
+            k_print(slot_x(i), slot_y(i), line + 5, 0);
+            draw_stars(slot_x(i) - 1, slot_y(i) + 1, stars[i]);
+        } else k_print(slot_x(i) - 1, slot_y(i), "KILITLI", 3);
+    }
+    k_print(13, 25, "REKOR", 0); k_print_num(19, 25, best, 5, 1);
+    k_print(3, 28, "OKLAR: SEC  SPACE: GIR  CTRL: GERI", 2);
+    if (sel >= unlocked) sel = unlocked - 1;
+}
+
+static void select_frame(void) {
+    big_palette(st_t < 32 ? st_t >> 2 : 8);
+    if (pressed(BTN_LEFT | BTN_UP) && sel) { --sel; k_sfx(SFX_BLIP); }
+    if (pressed(BTN_RIGHT | BTN_DOWN) && sel + 1 < unlocked) { ++sel; k_sfx(SFX_BLIP); }
+    k_sprite(SPR_HERO, slot_x(sel) * 8 - 22, slot_y(sel) * 8 - 4, (st_t >> 4) & 1 ? S_side1 : S_side0, PAL_HERO);
+    if (pressed(BTN_B)) go(ST_TITLE);
+    else if (pressed(BTN_START | BTN_A)) {
+        level = sel; lives = 3; score = 0; died_here = 0; new_best = 0;
+        k_sfx(SFX_PICKUP);
+        go(ST_CARD);
+    }
+}
+
+/* ---- level card */
+static void card_enter(void) {
+    screen_reset();
+    set_mine_palettes(lv_mine[level]);
+    level_label(level);
+    big_center(5, line);
+    center(9, mine_name[lv_mine[level]], 2);
+    center(12, lv_name[level], 1);
+    k_print(11, 16, "HEDEF", 0); k_print_num(17, 16, need[level], 2, 1); k_print(20, 16, "KRISTAL", 0);
+    k_print(11, 18, "SURE", 0); k_print_num(17, 18, lv_time[level], 3, 1);
+    k_print(11, 20, "CAN", 0); k_print_num(17, 20, lives, 1, 1);
+    center(24, lv_intro[level], 2);
+}
+
+static void card_frame(void) {
+    big_palette(st_t < 32 ? st_t >> 2 : 8);
+    k_sprite(SPR_HERO, 152, 200, (st_t >> 3) & 1 ? S_down1 : S_down0, PAL_HERO);
+    if (st_t >= 150 || (st_t > 20 && pressed(BTN_START | BTN_A))) go(ST_PLAY);
+}
+
+/* ---- play (also the demo) */
+static void start_level(void) {
+    screen_reset();
+    load_level();
+    buf = 0; hold_a = 0; a_armed = 0;
+}
+
+static void hold_bar(void) {
+    unsigned char i;
+    if (!hold_a) { k_print(26, 1, "             ", 0); return; }
+    k_print(26, 1, "YENIDEN", 3);
+    for (i = 0; i < 5; ++i) k_tile(34 + i, 1, i < hold_a / 12 ? '#' : '-', 3);
+}
+
+static void play_frame(void) {
+    unsigned char p, dir;
+    if (demo) {
+        if (pressed(0xFF) || !alive || won || demo_i >= sizeof demo_path) { go(ST_TITLE); return; }
+        p = 0;
+        if (demo_i < sizeof demo_path) p = demo_path[demo_i];
+    } else {
+        p = pad[0] | pad[1];
+        buf |= pad_new[0] | pad_new[1];            /* a press between two steps is kept */
+        if (pressed(BTN_START)) { go(ST_PAUSE); return; }
+        /* A held: restart the level (a press that started on another screen does not count) */
+        if (pressed(BTN_A)) a_armed = 1;
+        if ((p & BTN_A) && a_armed) {
+            if (++hold_a >= 60) { alive = 0; hold_a = 0; hold_bar(); restart = 1; go(ST_DEATH); return; }
+            if ((hold_a & 3) == 0) hold_bar();
+        } else if (hold_a) { hold_a = 0; hold_bar(); }
+    }
+    /* camera (the HUD stays put: raster split), with a little shake when rocks land */
+    if (cam < cam_target) cam += cam_target - cam > 8 ? 4 : 2;
+    else if (cam > cam_target) cam -= cam - cam_target > 8 ? 4 : 2;
+    if (shake) --shake;
+    k_split(14, cam + (shake & 2 ? 2 : 0), shake & 1);
+    cycle_colours();
+    sparkle();
+    if (++frames60 == 60) {
+        frames60 = 0;
+        if (time_left) --time_left;
+        if (!time_left) alive = 0;
+        hud();
+    } else if (time_left <= 20 && (frames60 & 31) == 0) hud();
+    if (exit_open && exit_stage < 3 && (anim & 7) == 0) { ++exit_stage; draw_cell(exit_x, exit_y); }
+    if (++tick >= TICK) {
+        tick = 0;
+        moving = 0; snap = 0;
+        from_x = hero_x; from_y = hero_y;
+        if (demo) {
+            if (!--demo_n && (demo_i += 2) < sizeof demo_path) demo_n = demo_path[demo_i + 1];
+        } else {
+            if (!(p & 0x0F)) p |= buf & 0x0F;      /* held direction first, else the one pressed early */
+            p |= buf & BTN_B;
+            buf = 0;
+        }
+        dir = p & 0x0F;
+        if (p & BTN_B) {
+            if (dir & BTN_UP) snap_at(0, -1);
+            else if (dir & BTN_DOWN) snap_at(0, 1);
+            else if (dir & BTN_LEFT) snap_at(-1, 0);
+            else if (dir & BTN_RIGHT) snap_at(1, 0);
+        } else if (dir & BTN_UP) move_hero(0, -1);
+        else if (dir & BTN_DOWN) move_hero(0, 1);
+        else if (dir & BTN_LEFT) move_hero(-1, 0);
+        else if (dir & BTN_RIGHT) move_hero(1, 0);
+        physics();
+    }
+    draw_hero();
+    fx_draw();
+    if (demo) return;
+    if (won) go(ST_CLEAR);
+    else if (!alive) go(ST_DEATH);
+}
+
+static void demo_enter(void) {
+    demo = 1; level = 0; lives = 3; score = 0;
+    demo_i = 0; demo_n = demo_path[1];
+    start_level();
+    k_print(26, 1, "DEMO", 1);
+}
+
+/* ---- pause menu */
+static const char *const pause_items[3] = { "DEVAM", "YENIDEN BASLA", "MENUYE DON" };
+static void pause_draw(void) {
+    unsigned char i;
+    for (i = 0; i < 3; ++i) {
+        k_print(box_x + 2, 13 + i * 2, i == cursor ? ">" : " ", 1);
+        k_print(box_x + 4, 13 + i * 2, pause_items[i], i == cursor ? 1 : 0);
+    }
+}
+
+static void pause_enter(void) {
+    k_sprite(SPR_HERO, -16, 0, 0, 0);
+    k_hide_sprites(SPR_FX);
+    box_open();
+    k_print(box_x + 5, 10, "DURAKLADI", 2);
+    cursor = 0;
+    pause_draw();
+}
+
+static void pause_frame(void) {
+    if (pressed(BTN_UP) && cursor) { --cursor; pause_draw(); k_sfx(SFX_BLIP); }
+    if (pressed(BTN_DOWN) && cursor < 2) { ++cursor; pause_draw(); k_sfx(SFX_BLIP); }
+    if (pressed(BTN_B)) cursor = 0;
+    if (!pressed(BTN_START | BTN_A | BTN_B)) return;
+    if (cursor == 0) { box_close(); state = ST_PLAY; a_armed = 0; buf = 0; draw_hero(); }
+    else if (cursor == 1) { box_close(); alive = 0; restart = 1; go(ST_DEATH); }
+    else go(ST_SELECT);
+}
+
+/* ---- death: a dust cloud, a moment, then the level again (or the end) */
+static void death_enter(void) {
+    unsigned char i;
+    k_sfx(SFX_LOSE);
+    for (i = 0; i < NFX; ++i) fx_t[i] = 0;
+    for (i = 0; i < NFX; ++i) {
+        fx_add(1, hero_x, hero_y);
+        fx_x[i] += i & 1 ? 6 : -6; fx_y[i] += i & 2 ? 5 : -5; fx_t[i] = 12 + i * 3;
+    }
+    k_fill_tiles(26, 1, 14, 1, ' ', 0);
+    k_print(26, 1, restart ? "YENIDEN" : time_left ? "EZILDIN!" : "SURE BITTI!", 3);
+    restart = 0;
+}
+
+static void death_frame(void) {
+    if (shake) --shake;
+    k_split(14, cam + (shake & 2 ? 2 : 0), shake & 1);
+    if (st_t < 30) {
+        unsigned char i;
+        for (i = 0; i < NFX; ++i) if (fx_t[i] && (st_t & 3) == 0) { fx_x[i] += i & 1 ? 1 : -1; fx_y[i] -= 1; }
+    }
+    draw_hero();
+    fx_draw();
+    if (st_t < 75) return;
+    died_here = 1;
+    if (--lives) { start_level(); state = ST_PLAY; }
+    else go(ST_OVER);
+}
+
+/* ---- level end: the time left counts into the points, then the stars */
+static unsigned char got;                 /* stars won */
+static void clear_enter(void) {
+    k_sfx(SFX_WIN);
+    k_hide_sprites(SPR_FX);
+    box_open();
+    k_print(box_x + 4, 10, "BOLUM TAMAM!", 1);
+    k_print(box_x + 2, 12, "SURE", 0);
+    k_print(box_x + 2, 13, "PUAN", 0);
+    got = 1 + (gems >= gems_total) + !died_here;
+    k_print(box_x + 2, 18, gems >= gems_total ? "HEPSI TOPLANDI" : "", 2);
+    k_print(box_x + 2, 19, died_here ? "" : "HIC OLMEDIN", 2);
+}
+
+static void clear_frame(void) {
+    unsigned char i;
+    draw_hero();
+    if (time_left) {
+        if (st_t > 30) {
+            i = time_left > 2 ? 2 : time_left;
+            time_left -= i; score += i * 2;
+            if ((st_t & 3) == 0) k_sfx(SFX_TICK);
+        }
+        k_print_num(box_x + 8, 12, time_left, 3, 1);
+        k_print_num(box_x + 8, 13, score, 5, 1);
+        hud();
+        st_t = st_t > 31 ? 31 : st_t;
+        return;
+    }
+    k_print_num(box_x + 8, 12, 0, 3, 1);
+    k_print_num(box_x + 8, 13, score, 5, 1);
+    /* the stars one by one */
+    for (i = 0; i < 3; ++i)
+        if (st_t == 50 + i * 20) {
+            k_tile(box_x + 7 + i * 2, 15, i < got ? T_istar : T_istar0, PAL_ICON);
+            if (i < got) k_sfx(SFX_PICKUP);
+        }
+    if (st_t < 120 || (st_t < 400 && !pressed(BTN_START | BTN_A))) return;
+    if (got > stars[level]) stars[level] = got;
+    if (level + 2 > unlocked && level + 1 < NLEVEL) unlocked = level + 2;
+    save_write();
+    if (level + 1 < NLEVEL) { ++level; died_here = 0; go(ST_CARD); }
+    else { last_won = 1; go(ST_OVER); }
+}
+
+/* ---- game over (or every level done) */
+static void over_enter(void) {
+    if (score > best) { best = score; new_best = 1; }
+    save_write();
+    screen_reset();
+    set_mine_palettes(lv_mine[level]);
+    big_center(6, last_won ? "TEBRIKLER" : "OYUN BITTI");
+    if (last_won) center(10, "BUTUN OCAKLAR TAMAM!", 2);
+    k_print(13, 14, "PUAN", 0); k_print_num(19, 14, score, 5, 1);
+    k_print(13, 16, "REKOR", 0); k_print_num(19, 16, best, 5, 1);
+    if (new_best) center(19, "YENI REKOR!", 3);
+    center(24, "SPACE: DEVAM", 1);
+}
+
+static void over_frame(void) {
+    big_palette(st_t < 32 ? st_t >> 2 : 8);
+    if (new_best) k_print(14, 19, (st_t & 32) ? "           " : "YENI REKOR!", 3);
+    if (st_t > 40 && pressed(BTN_START | BTN_A)) { last_won = 0; go(ST_SELECT); }
+}
+
+static void go(unsigned char s) {
+    state = s; st_t = 0;
+    switch (s) {
+    case ST_TITLE: demo = 0; title_enter(); break;
+    case ST_DEMO: demo_enter(); state = ST_PLAY; break;
+    case ST_SELECT: select_enter(); break;
+    case ST_CARD: card_enter(); break;
+    case ST_PLAY: start_level(); break;
+    case ST_PAUSE: pause_enter(); break;
+    case ST_DEATH: death_enter(); break;
+    case ST_CLEAR: clear_enter(); break;
+    case ST_OVER: over_enter(); break;
+    }
 }
 
 void main(void) {
-    unsigned char p;
     k_init();
     PPU_CTRL = 0;
     k_vunpack(TILE_BASE * 32, tiles_data);
@@ -402,61 +790,21 @@ void main(void) {
     big_init(slots, 18, PAL_BIG);
     PPU_CTRL = CTRL_NMI | CTRL_BG | CTRL_SPR;
     k_seed(0x1234);
+    save_read();
+    go(ST_TITLE);
     for (;;) {
-        title();
-        level = 0; lives = 3; score = 0;
-        k_clear_map();
-        load_level();
-        while (lives) {
-            k_wait_frame();
-            ++anim;
-            p = pad[0] | pad[1];
-            if ((p & (BTN_SELECT | BTN_START)) == (BTN_SELECT | BTN_START)) k_menu();
-            if ((pad_new[0] | pad_new[1]) & BTN_START) {
-                k_print(30, 1, "DURAKLADI", 1);
-                do k_wait_frame(); while (!((pad_new[0] | pad_new[1]) & BTN_START));
-                k_print(30, 1, "         ", 0);
-            }
-            /* camera (the HUD stays put: raster split), with a little shake when rocks land */
-            if (cam < cam_target) cam += cam_target - cam > 8 ? 4 : 2;
-            else if (cam > cam_target) cam -= cam - cam_target > 8 ? 4 : 2;
-            if (shake) --shake;
-            k_split(14, cam + (shake & 2 ? 2 : 0), shake & 1);
-            cycle_colours();
-            sparkle();
-            if (++frames60 == 60) {
-                frames60 = 0;
-                if (time_left) --time_left;
-                if (!time_left) alive = 0;
-                hud();
-            } else if (time_left <= 20 && (frames60 & 31) == 0) hud();
-            if (exit_open && exit_stage < 3 && (anim & 7) == 0) { ++exit_stage; draw_cell(exit_x, exit_y); }
-            if (++tick >= TICK) {
-                tick = 0;
-                moving = 0;
-                from_x = hero_x; from_y = hero_y;
-                if (p & BTN_UP) move_hero(0, -1);
-                else if (p & BTN_DOWN) move_hero(0, 1);
-                else if (p & BTN_LEFT) move_hero(-1, 0);
-                else if (p & BTN_RIGHT) move_hero(1, 0);
-                physics();
-            }
-            draw_hero();
-            fx_draw();
-            if (won) {
-                score += time_left;
-                k_sfx(SFX_WIN);
-                message("BOLUM TAMAM!");
-                level = (level + 1) % 3;
-                load_level();
-            } else if (!alive) {
-                k_sfx(SFX_LOSE);
-                --lives;
-                message(lives ? "EZILDIN!" : "OYUN BITTI");
-                if (lives) load_level();
-            }
+        k_wait_frame();
+        ++anim; ++st_t;
+        if (((pad[0] | pad[1]) & (BTN_SELECT | BTN_START)) == (BTN_SELECT | BTN_START)) k_menu();
+        switch (state) {
+        case ST_TITLE: title_frame(); break;
+        case ST_SELECT: select_frame(); break;
+        case ST_CARD: card_frame(); break;
+        case ST_PLAY: play_frame(); break;
+        case ST_PAUSE: pause_frame(); break;
+        case ST_DEATH: death_frame(); break;
+        case ST_CLEAR: clear_frame(); break;
+        case ST_OVER: over_frame(); break;
         }
-        k_print(12, 1, "SPACE: TEKRAR", 0);
-        wait_start();
     }
 }

@@ -125,11 +125,23 @@ check("kristal: fits below $8000 (loads at $0400)", len(rom("game_kristal.bin"))
 run(k, 40, shot="kristal_title.png")
 check("kristal: title screen", "KRISTALLERI TOPLA" in screen_text(k), screen_text(k))
 check("kristal: crystals fall behind the title", sum(1 for i in range(8, 16) if k.rd(0x300 + 4 * i) < 240) >= 4)
-k.pads[1] = 0x10                          # Enter = keyboard player 2 Start
-run(k, 3); k.pads[1] = 0; run(k, 2)
+ST_TITLE, ST_DEMO, ST_SELECT, ST_CARD, ST_PLAY, ST_PAUSE, ST_DEATH, ST_CLEAR, ST_OVER = range(9)
+st = lambda: peek(k, S, "state")
+def tap(mask, player=0, after=4):
+    k.pads[player] = mask; run(k, 2); k.pads[player] = 0; run(k, after)
+tap(0x10, player=1)                       # Enter = keyboard player 2 Start
+run(k, 10, shot="kristal_select.png")
+txt = screen_text(k)
+check("kristal: Start opens the mine select", st() == ST_SELECT and "TOPRAK OCAK" in txt and txt.count("KILITLI") == 2, txt)
+tap(0x10)
+run(k, 30, shot="kristal_card.png")
+txt = screen_text(k)
+check("kristal: level card (name, target, a line about the level)", st() == ST_CARD and "ILK KAZI" in txt and "HEDEF" in txt
+      and "KRISTAL" in txt and "KAYADAN KAC" in txt, txt)
+tap(0x80)                                 # A: on with the level
 run(k, 10, shot="kristal_level1.png")
 txt = screen_text(k)
-check("kristal: level 1 drawn with its HUD", "00/10" in txt and "PUAN" in txt and "OCAK 1" in txt, txt)
+check("kristal: level 1 drawn with its HUD", st() == ST_PLAY and "00/10" in txt and "PUAN" in txt and "OCAK 1-1" in txt, txt)
 W = 32
 cell = lambda x, y: peek(k, S, "map", y * W + x) & 15
 check("kristal: hero starts at (1,1)", peek(k, S, "hero_x") == 1 and peek(k, S, "hero_y") == 1)
@@ -176,9 +188,78 @@ walk(0x08, lambda: hy() == 1)                 # up to (8,1)
 walk(0x01, lambda: hx() == 11)                # right to the crystal at (11,1)
 check("kristal: crystal collected", peek(k, S, "gems") == 1 and peek(k, S, "score", size=2) == 10,
       f"gems={peek(k, S, 'gems')} hero=({hx()},{hy()})")
+# B + direction: dig the dirt below without moving
+k.pads[0] = 0x44; run(k, 8); k.pads[0] = 0; run(k, 2)
+check("kristal: B + direction digs without moving", cell(11, 2) == 0 and (hx(), hy()) == (11, 1), f"({hx()},{hy()}) {cell(11, 2)}")
+# a press shorter than a step is not lost
+k.pads[0] = 0x01; run(k, 1); k.pads[0] = 0; run(k, 9)
+check("kristal: a short press still moves one cell", (hx(), hy()) == (12, 1), f"({hx()},{hy()})")
+# pause menu: Start, then Devam
+tap(0x10)
+check("kristal: Start opens the pause menu", st() == ST_PAUSE and "DURAKLADI" in screen_text(k) and "MENUYE DON" in screen_text(k),
+      screen_text(k))
+run(k, 1, shot="kristal_pause.png")
+tap(0x10)
+check("kristal: Devam goes back to the level", st() == ST_PLAY and "DURAKLADI" not in screen_text(k) and hx() == 12)
 k.wr(S["_time_left"], 1); k.wr(S["_time_left"] + 1, 0)
 run(k, 200, shot="kristal_timeout.png")
-check("kristal: time out costs a life", peek(k, S, "lives") == 2, f"lives={peek(k, S, 'lives')}")
+check("kristal: time out costs a life", peek(k, S, "lives") == 2 and st() == ST_PLAY and (hx(), hy()) == (1, 1),
+      f"lives={peek(k, S, 'lives')} state={st()}")
+# pause, Yeniden basla: the level again, one life less
+tap(0x10); tap(0x04); tap(0x80)
+run(k, 90)
+check("kristal: pause menu restart costs a life", peek(k, S, "lives") == 1 and st() == ST_PLAY, f"lives={peek(k, S, 'lives')}")
+# hold A: the level again; with the last life it is the end
+walk(0x01, lambda: hx() == 3)
+k.pads[0] = 0x80; run(k, 30)
+check("kristal: holding A shows the restart bar", "YENIDEN" in screen_text(k))
+run(k, 40); k.pads[0] = 0
+run(k, 90, shot="kristal_over.png")
+txt = screen_text(k)
+check("kristal: A held on the last life: game over", st() == ST_OVER and "PUAN" in txt and "REKOR" in txt, txt)
+run(k, 30); tap(0x10); run(k, 10)            # (a screen takes a few frames to draw)
+check("kristal: game over goes back to the mine select", st() == ST_SELECT)
+# play level 1 again and finish it with every crystal and no death: three stars, level 2 opens
+tap(0x10); run(k, 25); tap(0x80); run(k, 5)
+k.wr(S["_gems"], peek(k, S, "gems_total"))
+k.wr(S["_won"], 1)
+run(k, 60)
+check("kristal: level end counts the time left into the points", st() == ST_CLEAR and "BOLUM TAMAM" in screen_text(k))
+run(k, 140, shot="kristal_clear.png")
+T_istar = int(next(l.split()[2] for l in open(os.path.join(B, "kristal/art.h")) if l.startswith("#define T_istar ")))
+lit = sum(1 for c in range(64) if k.ppu.vram[0x4000 + 2 * (15 * 64 + c)] == T_istar)
+check("kristal: level end gives three stars", peek(k, S, "time_left", size=2) == 0 and peek(k, S, "score", size=2) >= 250
+      and lit == 3, f"score={peek(k, S, 'score', size=2)} stars={lit}")
+tap(0x10); run(k, 10)
+txt = screen_text(k)
+check("kristal: then the card of the next level", st() == ST_CARD and "BUZ KOPRUSU" in txt, txt)
+save = bytes(k.ram[0x2E8:0x2F7])
+check("kristal: save area: level 2 open, three stars on level 1", save[0:2] == b"KO" and save[2] == 2 and save[3] == 3, save.hex())
+# switched on again (RAM kept): the save is read
+k, S = load_low("kristal")
+k.ram[0x2E8:0x2F7] = save
+run(k, 40)
+check("kristal: the best score on the title", "REKOR" in screen_text(k))
+tap(0x10, player=1); run(k, 10)
+txt = screen_text(k)
+check("kristal: the save is read when the game starts again", txt.count("KILITLI") == 1, txt)
+tap(0x01); tap(0x10); run(k, 10)
+check("kristal: the opened level can be chosen", st() == ST_CARD and "BUZ KOPRUSU" in screen_text(k))
+# a wrong check byte: the save is not used
+k, S = load_low("kristal")
+k.ram[0x2E8:0x2F7] = save[:14] + bytes([save[14] ^ 1])
+run(k, 40); tap(0x10, player=1); run(k, 10)
+check("kristal: a broken save is not used", screen_text(k).count("KILITLI") == 2)
+# left alone, the title plays a demo: the first level by itself, the door opens; a key ends it
+k, S = load_low("kristal")
+run(k, 660)
+check("kristal: the title starts a demo when left alone", st() == ST_PLAY and peek(k, S, "demo") == 1 and "DEMO" in screen_text(k))
+run(k, 330, shot="kristal_demo.png")
+check("kristal: the demo collects crystals and opens the door", peek(k, S, "gems") >= 10 and peek(k, S, "exit_open") == 1
+      and peek(k, S, "alive") == 1, f"gems={peek(k, S, 'gems')} alive={peek(k, S, 'alive')} ({hx()},{hy()})")
+tap(0x80)
+check("kristal: a key ends the demo", st() == ST_TITLE)
+
 
 k, S = load_game("yildiz")
 check("yildiz: fits in 20 KB", len(rom("game_yildiz.bin")) <= 0x5000)
