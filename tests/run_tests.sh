@@ -63,11 +63,13 @@ if [[ -z "$filter" || "$filter" == vboard ]]; then
 import sys
 d = open(sys.argv[1], "rb").read().split(b"\n", 3)[3]
 px = lambda x, y: tuple(d[(y * 640 + x) * 3:(y * 640 + x) * 3 + 3])
-# Kristal Ocak: the hero dug from cell (1,1) to (6,1); cell (3,1) is now empty (black), (9,1) is still dirt
-sys.exit(0 if px(112, 80) == (0, 0, 0) and px(304, 80) != (0, 0, 0) else 1)
+# Kristal Ocak 1-1: the hero dug from cell (1,1) to about (6,1). A dug cell shows the dark back wall, dirt is
+# bright: cell (3,1) (screen 96..127 x 64..95) is dark on average, cell (9,1) (288..319) still dirt
+cell = lambda cx: sum(sum(px(x, y)) for x in range(cx * 32, cx * 32 + 32, 2) for y in range(64, 96, 2)) / 256
+sys.exit(0 if cell(3) < 150 and cell(9) > 200 else 1)   # (on the Python model: about 89 and 280)
 PY
   then
-    echo "PASS  virtual board: boot, launcher by keyboard, Kristal Ocak played"; pass=$((pass+1))
+    echo "PASS  virtual board: boot, launcher by keyboard, Kristal Ocak's screens, level 1-1 played"; pass=$((pass+1))
   else
     echo "FAIL  virtual board (see $B/vboard.log)"; fail=$((fail+1))
   fi

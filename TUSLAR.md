@@ -64,8 +64,12 @@ Kurulum ekranında: yukarı / aşağı oyuncu sayısı, **Space / Enter** başla
 ### Kristal Ocak
 | Tuş | İş |
 | --- | --- |
-| Ok tuşları / W A S D | Kaz, yürü |
-| Space / Enter | Başlat, tekrar dene |
+| Ok tuşları / W A S D | Kaz, yürü (basılı tutunca yürümeye devam eder) |
+| Ctrl + yön | Yerinden kıpırdamadan kaz ya da topla; boş hücreye dinamit koy |
+| Shift (basılı tut) | Bölümü baştan başlat (bir can gider) |
+| Space / Enter | Başlat, seç; oyunda duraklat menüsü |
+| Ok tuşları (menüde) | Ocak ve bölüm seç, menüde gezin |
+| Ctrl (ocak seç ekranında) | Başlığa dön |
 
 ### Yıldız Muhafızı
 | Tuş | İş |

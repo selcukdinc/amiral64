@@ -25,6 +25,8 @@ def load(name, low=False):
     if low:
         k.ram[0x400:0x400 + len(g)] = g
         k.pc = 0x400
+        if os.path.exists(os.path.join(B, f"game_{name}.bin.ek")):   # extra data: where the loader leaves the port
+            k.cart = bytearray(rom(f"game_{name}.bin.ek")); k.cart_addr = 0
     else:
         k.game[:len(g)] = g
         k.pc = 0x9000
@@ -68,7 +70,44 @@ def fitil():
     shot(k, "05_fitil.png")
 
 
-SCENES = {"fitil": fitil}
+def kristal_level(i, moves, name):
+    """Kristal Ocak: level i (from the select screen, every level open), its stored solution played for a while"""
+    from kristal_sim import parse_level, decode
+    lv = os.path.join(ROOT, "sw", "games", "kristal", "levels")
+    keys, _ = parse_level(os.path.join(lv, sorted(os.listdir(lv))[i]))
+    k, S = load("kristal", low=True)
+    b = [75, 79, 9] + [3, 2, 3, 1, 0, 0, 0, 0, 0] + [0x40, 0x06]        # a save: all open, a few stars
+    c = 0x5A
+    for v in b[2:]:
+        c = (((c << 1) | (c >> 7)) & 255) ^ v
+    k.ram[0x2E8:0x2F7] = bytes(b + [c])
+    run(k, 60); run(k, 2, [0, 0x10]); run(k, 12)
+    if i < 0:                                       # the select screen itself
+        run(k, 2, [0x01]); run(k, 40)
+        return shot(k, name)
+    for _ in range(i):
+        run(k, 2, [0x01]); run(k, 4)
+    run(k, 2, [0x10]); run(k, 30); run(k, 2, [0x80]); run(k, 3)
+    btn = {"": 0, "U": 0x08, "D": 0x04, "L": 0x02, "R": 0x01}
+    for m in decode(keys["solution"])[:moves]:
+        k.pads[0] = btn[m[1]] | 0x40 if m.startswith("b") else btn[m]
+        s0 = k.rd(S["_steps"])
+        for _ in range(14):
+            k.frame()
+            if k.rd(S["_steps"]) != s0:
+                break
+    k.pads[0] = 0
+    run(k, 3)
+    shot(k, name)
+
+
+def kristal():
+    kristal_level(5, 38, "03_kristal.png")              # 2-3: the mine carts
+    kristal_level(8, 52, "15_kristal_karanlik.png")     # 3-3: dark, the lantern
+    kristal_level(-1, 0, "16_kristal_secim.png")        # the mine select
+
+
+SCENES = {"fitil": fitil, "kristal": kristal}
 
 if __name__ == "__main__":
     for name in sys.argv[1:] or SCENES:

@@ -946,6 +946,16 @@ for _ in range(400):
 run(k, 30)
 check("tilsim from the cartridge: extra data read in after loading", k.test == 0xE0
       and bytes(k.rd(0xB000 + i) for i in range(len(ek))) == ek, f"test {k.test}")
+# and Kristal Ocak (2nd entry): its pictures, palettes and music come from the extra data too
+ekk = rom("game_kristal.bin.ek")
+k = Konsol(rom("boot.bin"), full)
+k.pads[0] = 0x20; run(k, 140); k.pads[0] = 0; run(k, 5)
+k.pads[0] = 0x04; run(k, 3); k.pads[0] = 0; run(k, 3)
+k.pads[0] = 0x80; run(k, 3); k.pads[0] = 0
+run(k, 300, shot="kristal_cart.png")
+check("kristal from the cartridge: extra data read in, the title is up and its music plays",
+      bytes(k.rd(0xB000 + i) for i in range(len(ekk))) == ekk and "KRISTALLERI TOPLA" in screen_text(k)
+      and any(r < 16 and (r & 3) == 2 and v & 15 for _, r, v in k.apu_log[-400:]), screen_text(k)[:400])
 
 # no cartridge
 k = run(Konsol(rom("boot.bin"), b""), 150)

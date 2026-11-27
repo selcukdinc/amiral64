@@ -256,15 +256,57 @@ aynı koşuyu o da denesin.
 
 ![Kristal Ocak](docs/03_kristal.png)
 
-Madende toprağı kazarak ilerle, turkuaz kristalleri topla. Gerekli sayıda kristal toplanınca çıkış kapısı
-sarı olur; kapıya ulaşınca bölüm biter. Kayalar ve kristaller boşluğa düşer, yuvarlak şeylerin üstünden yana
-yuvarlanır; **düşen bir kaya seni ezer**. Kayaları yana itebilirsin (arkası boşsa). 3 bölüm, 3 can, her bölüm
-150 saniye.
+Madende toprağı kazarak ilerle, kristalleri topla ve açılan kapıdan çık. Gereken sayıda kristal toplanınca
+kapı kayarak açılır ve ışığı yanıp söner. Kayalar ve kristaller boşluğa düşer, yuvarlak şeylerin üstünden yana
+yuvarlanır. Düşmeden önce bir adım sallanırlar, ama **düşen bir kaya seni ezer**. Kayaları yana itebilirsin
+(arkası boşsa).
 
-- Yön tuşları: hareket.
-- Üst satır: `KRISTAL 00/10  SURE 150  CAN 3`, altında `PUAN`.
-- Harita ekrandan geniş, kahraman ilerledikçe kayar; üst satır sabit kalır (ekranın ortasında yatay kaydırmanın
-  değişmesi, PPU'nun raster kesmesiyle yapılıyor).
+Üç ocak, her birinde üç bölüm var:
+
+| Ocak | Bölüm | Öne çıkan |
+| --- | --- | --- |
+| Toprak Ocak | 1-1 İlk Kazı, 1-2 Kaya Yolu, 1-3 Çatlak Tavan | Kazmak, kayayı kapıdan itmek, kayayı çatlak duvara düşürüp kırmak |
+| Buz Mağarası | 2-1 Dinamit, 2-2 Grizu, 2-3 Maden Arabası | Dinamitle kaya kapıyı açmak, grizuyu patlatmak, raydaki arabadan kaçmak |
+| Lav Derinliği | 3-1 Karanlık, 3-2 Kör Duman, 3-3 Son Ocak | Fenerle karanlıkta yol bulmak, sonra hepsi bir arada |
+
+- **Çatlak duvar:** Üstüne düşen kaya duvarı kırar, kaya da içinden düşer.
+- **Dinamit:** Yerden toplanır, kaç tane olduğu üst satırda görünür. B + yön ile boş bir hücreye konur, fitil
+  üç adım yanar. 3x3 alanı patlatır: toprak, kaya ve çatlak duvar gider; çelik duvar, kapı ve kristaller kalır.
+  Yakındaki başka bir dinamit de patlar. Patlamada kalırsan ölürsün.
+- **Grizu:** Bazı toprakların içinde gaz vardır, dikkatli bakan biraz farklı renkte olduğunu görür. Kazınca gaz
+  dört adım yayılır, sonra dinamit gibi patlar.
+- **Maden arabası:** Rayda gider gelir, önündeki kayayı iter, önünde durursan seni ezer, üstüne binilmez.
+  Üstüne bir kaya düşerse durur.
+- **Karanlık ve fener:** Lav Derinliği karanlıktır. Fener çevredeki yaklaşık üç hücreyi aydınlatır, uzakta
+  yalnızca kristaller hafifçe parlar. Fenerin yağı zamanla azalır ve ışık daralır; yerdeki yağ şişeleri feneri
+  doldurur.
+
+Ekranlar:
+- **Başlık:** Bir süre beklenirse 1-1'i kendi kendine oynayan bir demo başlar.
+- **Ocak seç:** Açılmış bölümler, en iyi yıldızlar ve rekor burada görünür.
+
+  ![Ocak seç](docs/16_kristal_secim.png)
+- **Bölüm kartı:** Bölümün adı, hedefi, süresi ve yeni öğesinin tek satırlık tanıtımı.
+- **Bölüm sonu:** Kalan süre puana eklenir. 1–3 yıldız verilir: biri kapıdan çıktığın için, biri bütün
+  kristalleri topladıysan, biri hiç ölmediysen.
+- **Duraklat menüsü:** Devam, Yeniden başla (bir can gider), Menüye dön.
+
+Açılmış bölümler, yıldızlar ve rekor RAM'de `$02E8` adresinde tutulur, kart açık kaldıkça kalır.
+
+![Karanlıkta fener](docs/15_kristal_karanlik.png)
+
+Tuşlar:
+- Yön: kaz, yürü. Basılı tutunca yürümeye devam eder; erken basılan tuş kaybolmaz.
+- **B + yön:** Yerinden kıpırdamadan kaz ya da topla. Boş hücreye basarsan dinamit koyar.
+- **A basılı tut:** Takıldığında bölümü baştan başlatır (bir can gider).
+- Start: duraklat.
+
+Harita ekrandan geniştir ve kahraman ilerledikçe kayar. Üst satır yerinde durur: ekranın ortasında yatay
+kaydırma PPU'nun raster kesmesiyle değiştirilir.
+
+Bölümler `sw/games/kristal/levels/*.txt` dosyalarındadır. `tools/kristal_sim.py` oyunun kurallarının Python
+modelidir. Her bölümün rotasını hamlelere çevirir, testler de her bölümü emülatörde bu hamlelerle sonuna kadar
+oynar.
 
 ### Yıldız Muhafızı (1 oyuncu)
 
@@ -413,13 +455,14 @@ oyunları değiştirmek için yalnızca 1–3. adımlar yeterlidir.
 Sırayla dene ve her biri için ✓ ya da gördüğün farkı not al:
 
 - [ ] Programlamadan sonra parıltılı açılış animasyonu ve arpej geliyor (5.1)
-- [ ] Seçme ekranında altı oyun kartı var, sağ üstte `BRAM`; sol/sağ ile şerit kayıyor, başlık değişiyor (5.2)
+- [ ] Seçme ekranında yedi oyun kartı var, sağ üstte `BRAM`; sol/sağ ile şerit kayıyor, başlık değişiyor (5.2)
 - [ ] Bir oyundan Select + Start ile dönünce animasyonsuz, aynı oyun seçili geliyor
 - [ ] Select basılıyken CPU RESET: boot ROM menüsü; Serial Terminal'de `RETRO KONSOL BOOT ROM` ve `K65>` (5.3)
 - [ ] Monitörde `W 8406 FF` yazınca alttaki 8 LED yanıyor
 - [ ] Klavye: A/D ile seçme ekranında gezinme; oyunda W+A+Sol Shift ile Yukarı+Sol+Sağ Shift aynı anda
 - [ ] NES kolu: menüde gezinme, Fitil Arenası'nda her kolun kendi oyuncusu
-- [ ] Kristal Ocak: kazma, düşen kaya, kristal toplama, üst satırın kaymadan durması
+- [ ] Kristal Ocak: kazma, düşen kaya, kristal toplama, üst satırın kaymadan durması; dinamit, grizu, araba,
+      karanlıkta fener; müzik (APU v2'de dalga kanalı) ve efektler; ocak seç ekranında yıldızlar
 - [ ] Yıldız Muhafızı: ateş sesi, patlama, düşman ateşi
 - [ ] Fitil Arenası: 2–4 oyuncuyla bir maç; 2. oyuncu dört ok tuşuyla da yürüyor, kimse sol duvardan çıkamıyor
 - [ ] Mahalle Olimpiyatı: üç yarışma ve şampiyon ekranı
@@ -473,8 +516,8 @@ Açılışta launcher gelir (yaklaşık 50. karede seçme ekranı). `--pad1 "160
 ## 12. Testler
 
 ```sh
-tests/run_tests.sh          # hepsi (yaklaşık 10 dakika)
-tests/run_tests.sh sw       # yazılım: emülatörde boot ROM, launcher ve altı oyunun senaryolu testleri, ekran görüntüleri sw/build/shots
+tests/run_tests.sh          # hepsi (yaklaşık 20 dakika)
+tests/run_tests.sh sw       # yazılım: emülatörde boot ROM, launcher ve yedi oyunun senaryolu testleri (Kristal Ocak'ın dokuz bölümü baştan sona oynanır), ekran görüntüleri sw/build/shots
 tests/run_tests.sh sim      # VHDL testbench'leri (GHDL)
 tests/run_tests.sh flow     # VivadoMac ile sentez, yerleştirme, bitstream
 ```
@@ -487,8 +530,8 @@ tests/run_tests.sh flow     # VivadoMac ile sentez, yerleştirme, bitstream
 | `hw/t65/` | T65 6502 çekirdeği (BSD benzeri lisans, `NOTICE.md`) |
 | `hw/sim/` | Testbench'ler ve simülasyon modelleri (Xilinx primitive'leri, SPI flash) |
 | `constr/` | Nexys 4 DDR pinleri |
-| `sw/` | 6502 yazılımı: `boot/` boot ROM, `lib/` C oyun kütüphanesi (`bigtext.c`: büyük gölgeli başlık harfleri), `games/` launcher ve altı oyun, `tests/` |
-| `tools/` | `emu6502.py`, `ppu_model.py`, `gfx.py` (metin çizimden karo/sprite), `font.py`, `mkcart.py`; `art/` launcher, Blok Yağmuru, Tılsım, Fitil Arenası ve Koridor 64 grafiklerini (Koridor 64'ün açı ve uzaklık tablolarını da) üreten betikler (`art.txt` dosyaları bunlardan üretilir), `art/preview.py` bir `art.txt`'yi PNG'ye döker |
+| `sw/` | 6502 yazılımı: `boot/` boot ROM, `lib/` C oyun kütüphanesi (`bigtext.c`: büyük gölgeli başlık harfleri), `games/` launcher ve yedi oyun, `tests/` |
+| `tools/` | `emu6502.py`, `ppu_model.py`, `apu_model.py`, `gfx.py` (metin çizimden karo/sprite), `font.py`, `mkcart.py`; `sesc.py` (MML derleyici), `sesdinle.py` (müzikten WAV); `kristal_sim.py` (Kristal Ocak kural modeli ve rota çözücü), `kristal_levels.py` (bölüm paketleyici); `docshots.py` (bu belgedeki ekran görüntüleri), `sizes.py` (oyunların bellek tablosu); `art/` launcher, Blok Yağmuru, Tılsım, Fitil Arenası, Kristal Ocak ve Koridor 64 grafiklerini (Koridor 64'ün açı ve uzaklık tablolarını da) üreten betikler (`art.txt` dosyaları bunlardan üretilir), `art/preview.py` bir `art.txt`'yi PNG'ye döker |
 | `vivado/` | `create_project.tcl`, `build_bitstream.tcl`, `sources.tcl` |
 | `docs/` | Bu belgedeki ekran görüntüleri (emülatörden) |
 
@@ -505,6 +548,28 @@ tests/run_tests.sh flow     # VivadoMac ile sentez, yerleştirme, bitstream
   Register listesi: `sw/include/konsol.inc` ve `hw/` içindeki her bloğun baş açıklaması.
 - PPU: 320x240, VGA 640x480 @ 60 Hz'te 2 kat büyütülmüş; 64x32 karo haritası ve kaydırma; 256 karo; 16x16'lık 64
   sprite (satır başına 16); 16 palet x 16 renk (4096 renkten); vblank NMI, raster IRQ, OAM DMA, çarpışma bayrakları.
-- APU: 2 kare dalga, üçgen, gürültü, sönümlenen zarf; açık-drenaj `AUD_PWM` üzerinden birinci dereceden
-  delta-sigma çıkış.
+- APU v2: 2 kare dalga, üçgen, gürültü ve 32 örneklik bir dalga kanalı; sönümlenen zarf, atak/sürdürme, kare
+  dalgalarda sweep, seçilebilir çıkış alçak geçireni. Çıkış açık-drenaj `AUD_PWM` üzerinden birinci dereceden
+  delta-sigma ile verilir. v1'in bütün registerları yerinde durur: yalnızca v1'i bilen bir program aynı sesi
+  verir (registerlar aşağıda).
+- Ses motoru (`sw/lib/ses.s`): Müzik ve efektleri NMI'da, karede bir kez çalar. Oyunların müzikleri
+  `games/<oyun>/muzik.ses` dosyalarında MML ile yazılır, `tools/sesc.py` ile derlenir. Ortak çalgılar
+  `sw/lib/ortak.ses` dosyasındadır. Bir efekt müziğin bir kanalını ödünç alır, bitince geri verir. v1 bir
+  APU'da dalga kanalı susar, gerisi çalar. Kartsız dinlemek için `make -C sw ses-dinle` her şarkıyı ve efekti
+  `sw/build/ses/*.wav` olarak yazar.
+
+**APU registerları** (`$8100` + 4 x kanal; kanal 0–1 kare, 2 üçgen, 3 gürültü, 4 dalga `$8114`):
+
+| Adres | İş |
+| --- | --- |
+| +0, +1 | Periyot (12 bit). Kare f = 1,5625 MHz / (8 (P+1)); üçgen ve dalga f = 1,5625 MHz / (32 (P+1)); gürültü: her P+1 tıkta bir LFSR adımı |
+| +2 | bit 3–0 ses, bit 5–4 kare görev oranı (12,5 / 25 / 50 / 75 %), bit 6 gürültü kısa mod, bit 7 sönüm açık |
+| +3 | bit 3–0 sönüm hızı, bit 7–4 uzunluk (n x 4 kare, 0 = sonsuz). Yazmak notayı başlatır |
+| `$8110` | Ana ses (bit 3–0; 0 amfiyi de kapatır) |
+| `$8111` | Kanal açma maskesi (bit 4–0) |
+| `$8112` | Okuma: sürüm `$A2` (v1 kanal etkinliğini verir) |
+| `$8113` | Çıkış alçak geçireni (bit 1–0): 0 kapalı, 1–3 = 15,5 / 7,8 / 3,9 kHz |
+| `$8118`, `$8119` | Kare 0, 1 sweep: bit 7 açık, bit 6–4 her n+1 karede, bit 3 periyot aşağı (perde yukarı), bit 2–0 kaydırma |
+| `$811A`–`$811E` | Kanal 0–4 atak/sürdürme: bit 7–4 atak (0 = hemen), bit 3–0 sönümün duracağı ses |
+| `$8120`–`$812F` | Dalga RAM'i: 4 bitlik 32 örnek, önce yüksek yarım bayt |
 - Kaynak kullanımı: yaklaşık 3.000 LUT ve 45 blok RAM (XC7A100T'nin %5'i ve %33'ü).
