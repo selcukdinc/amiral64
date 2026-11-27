@@ -3,6 +3,9 @@
  * A rock that falls on a cracked wall breaks it. Dynamite is picked up, placed with B + direction on an
  * empty cell, burns for three steps and blows up the 3x3 round it: dirt, rocks and cracked walls go,
  * steel walls and crystals stay, other dynamite goes off too, and so does the miner.
+ * Some dirt hides firedamp (a slightly different shade): dug, the gas spreads for four steps, then blows
+ * up like dynamite. Mine carts run to and fro on the rails, push the rock in front of them, run the
+ * miner over, and stop while a rock lies on them; the miner cannot ride them.
  * The miner walks smoothly from cell to cell; dust flies where rocks land, crystals sparkle, the exit
  * door slides open. Three mines with their own colours.
  * Screens: title (with a demo when left alone), mine select, level card, play, pause menu, death,
@@ -23,6 +26,8 @@ enum { EMPTY, DIRT, WALL, ROCK, GEM, GEM2, EXIT, HERO, CRACK, DYN, LIT, GAS, BOO
 #define FALLING 0x40
 #define WOBBLE  0x20
 #define KIND(c) ((c) & 0x0F)
+#define CART_R  0x10         /* a cart going right */
+#define FREE(c) ((c) == EMPTY || (c) == RAIL)                    /* (a raw cell: no flags) */
 
 #define PAL_T    4           /* field: terrain, crystals and the door, specials */
 #define PAL_C    5
@@ -103,6 +108,10 @@ unsigned char gems_total, died_here, snap;              /* crystals the level ha
 unsigned char dyns, blasted;                            /* dynamite carried; the miner was in a blast */
 #define NFUSE 6
 unsigned char fuse_x[NFUSE], fuse_y[NFUSE], fuse_t[NFUSE];   /* lit dynamite: steps left (0 = free slot) */
+unsigned char fuse_gas[NFUSE];                                /* the slot is firedamp spreading, not a stick */
+unsigned char rail[H][W];                                     /* RAIL or EMPTY: what a cell is when left */
+static unsigned char cart_step;
+#define VACATE(x, y) (map[y][x] = rail[y][x])
 static unsigned cam, cam_target;
 static unsigned char exit_x, exit_y, exit_stage, tick, frames60, anim;
 /* the miner on screen: where he came from, which way he faces, what he does */
@@ -121,7 +130,7 @@ static void put_big(unsigned char x, unsigned char y, unsigned char t, unsigned 
     k_vaddr(a + 128); PPU_VDATA = t + 2; PPU_VDATA = pal; PPU_VDATA = t + 3; PPU_VDATA = pal;
 }
 
-static unsigned char open_cell(unsigned char k) { return k == EMPTY || k == HERO || k == BOOM; }
+static unsigned char open_cell(unsigned char k) { return k == EMPTY || k == HERO || k == BOOM || k == RAIL; }
 
 static void draw_cell(unsigned char x, unsigned char y) {
     unsigned char c = map[y][x], k = KIND(c), t, p = PAL_T, h = (x * 7 + y * 13 + (x >> 2)) & 3;
@@ -142,7 +151,9 @@ static void draw_cell(unsigned char x, unsigned char y) {
     case RAIL: t = T_rail; p = PAL_S; break;
     case CART: t = T_cart; p = PAL_S; break;
     case OIL: t = T_oil; p = PAL_S; break;
-    default: t = h & 1 ? T_back1 : T_back0;       /* empty, and the miner's cell (he is a sprite) */
+    default:                                      /* empty, and the miner's cell (he is a sprite) */
+        if (rail[y][x]) { t = T_rail; p = PAL_S; }
+        else t = h & 1 ? T_back1 : T_back0;
     }
     put_big(x, y, t, p);
 }
@@ -193,6 +204,7 @@ static void fx_draw(void) {
         if (!fx_t[i]) { k_sprite(SPR_FX + i, -16, 0, 0, 0); continue; }
         --fx_t[i];
         if (fx_kind[i] == 0) pat = fx_t[i] > 3 && fx_t[i] < 8 ? S_spark1 : S_spark0;
+        else if (fx_kind[i] == 2) { pat = S_smoke; if (fx_t[i] & 1) --fx_y[i]; }    /* firedamp drifts up */
         else pat = S_dust0 + (fx_t[i] < 4 ? 2 : fx_t[i] < 8 ? 1 : 0);
         k_sprite(SPR_FX + i, fx_x[i] - (int)cam, fx_y[i] + (fx_kind[i] ? 2 : -2), pat, PAL_FX);
     }
@@ -261,11 +273,13 @@ static void load_level(void) {
     gems = 0; gems_total = 0; exit_open = 0; exit_stage = 0; alive = 1; won = 0; moving = 0; face = 0; act = 0;
     snap = 0; time_left = lv_time[level]; frames60 = 0; tick = 0; shake = 0; dyns = 0; blasted = 0;
     for (x = 0; x < NFUSE; ++x) fuse_t[x] = 0;
+    cart_step = 0;
     for (x = 0; x < NFX; ++x) fx_t[x] = 0;
     set_mine_palettes(lv_mine[level]);
     for (y = 0; y < H; ++y)
         for (x = 0; x < W; ++x) {
             c = levels[level][y][x];
+            rail[y][x] = c == 'R' || c == 'A' ? RAIL : EMPTY;
             switch (c) {
             case 'W': map[y][x] = WALL; break;
             case '.': map[y][x] = DIRT; break;
@@ -276,6 +290,9 @@ static void load_level(void) {
             case 'P': map[y][x] = HERO; hero_x = x; hero_y = y; break;
             case 'C': map[y][x] = CRACK; break;
             case 'D': map[y][x] = DYN; break;
+            case 'G': map[y][x] = GAS; break;
+            case 'R': map[y][x] = RAIL; break;
+            case 'A': map[y][x] = CART | CART_R; break;
             default: map[y][x] = EMPTY;
             }
         }
@@ -299,7 +316,29 @@ static void landed(unsigned char x, unsigned char y) {
  * Bottom-up, so a falling thing is not moved twice; a thing that rolled right is skipped (x + 1). */
 static unsigned char *row, ph_x, ph_c, ph_k, ph_b;
 static signed char ph_y;
+/* a cart (at ph_x, ph_y) moves one cell along the rails: it pushes a rock that has room ahead, runs the
+ * miner over, turns back at the end of the rails or anything else; a rock lying on it holds it */
+static void cart(void) {
+    signed char d = ph_c & CART_R ? 1 : -1;
+    unsigned char nx = ph_x + d, n = row[nx], nk = n & 0x0F;
+    if (KIND(map[ph_y - 1][ph_x]) == ROCK) return;
+    if (nk == ROCK && !(n & FALLING) && rail[ph_y][nx] && FREE(row[nx + d])) {
+        row[nx + d] = ROCK; draw_cell(nx + d, ph_y);
+        k_sfx(SFX_TICK);
+    } else if (nk == HERO) {
+        alive = 0;
+    } else if (!(n == RAIL)) {
+        row[ph_x] = ph_c ^ CART_R;                   /* back the other way */
+        return;
+    }
+    row[nx] = ph_c;
+    VACATE(ph_x, ph_y);
+    redraw(ph_x, ph_y); draw_cell(nx, ph_y);
+    if (d > 0) ++ph_x;                               /* not moved twice */
+}
+
 static void physics(void) {
+    ++cart_step;
     for (ph_y = H - 2; ph_y > 0; --ph_y) {
         row = map[ph_y];
         for (ph_x = 1; ph_x < W - 1; ++ph_x) {
@@ -307,16 +346,20 @@ static void physics(void) {
             ph_k = ph_c & 0x0F;
             if (ph_k == BOOM || ph_k == CRACK) {
                 /* a blast burns for two steps; a cracked wall that was hit falls apart */
-                if (ph_c & WOBBLE) { row[ph_x] = EMPTY; redraw(ph_x, ph_y); if (ph_k == CRACK) fx_add(1, ph_x, ph_y); }
+                if (ph_c & WOBBLE) { VACATE(ph_x, ph_y); redraw(ph_x, ph_y); if (ph_k == CRACK) fx_add(1, ph_x, ph_y); }
                 else if (ph_k == BOOM) { row[ph_x] = BOOM | WOBBLE; draw_cell(ph_x, ph_y); }
+                continue;
+            }
+            if (ph_k == CART) {
+                if (cart_step & 1) cart();
                 continue;
             }
             if (ph_k != ROCK && ph_k != GEM && ph_k != GEM2) continue;
             ph_b = row[ph_x + W] & 0x0F;
-            if (ph_b == EMPTY) {
+            if (ph_b == EMPTY || ph_b == RAIL) {
                 if (ph_c & (FALLING | WOBBLE)) {
                     row[ph_x + W] = ph_k | FALLING;
-                    row[ph_x] = EMPTY;
+                    VACATE(ph_x, ph_y);
                     redraw(ph_x, ph_y); draw_cell(ph_x, ph_y + 1);
                 } else {
                     row[ph_x] = ph_k | WOBBLE;           /* it shakes first: a moment to run */
@@ -332,12 +375,12 @@ static void physics(void) {
                 row[ph_x] = ROCK;
                 draw_cell(ph_x, ph_y);
             } else if ((ph_b == ROCK || ph_b == GEM || ph_b == GEM2)
-                       && row[ph_x - 1] == EMPTY && row[ph_x - 1 + W] == EMPTY) {
-                row[ph_x - 1] = ph_k | FALLING; row[ph_x] = EMPTY;
+                       && FREE(row[ph_x - 1]) && FREE(row[ph_x - 1 + W])) {
+                row[ph_x - 1] = ph_k | FALLING; VACATE(ph_x, ph_y);
                 redraw(ph_x, ph_y); draw_cell(ph_x - 1, ph_y);
             } else if ((ph_b == ROCK || ph_b == GEM || ph_b == GEM2)
-                       && row[ph_x + 1] == EMPTY && row[ph_x + 1 + W] == EMPTY) {
-                row[ph_x + 1] = ph_k | FALLING; row[ph_x] = EMPTY;
+                       && FREE(row[ph_x + 1]) && FREE(row[ph_x + 1 + W])) {
+                row[ph_x + 1] = ph_k | FALLING; VACATE(ph_x, ph_y);
                 redraw(ph_x, ph_y); draw_cell(ph_x + 1, ph_y);
                 ++ph_x;
             } else if (ph_c & (FALLING | WOBBLE)) {
@@ -350,14 +393,20 @@ static void physics(void) {
 }
 
 /* ---------------------------------------------------------------- dynamite */
-static void light(unsigned char x, unsigned char y, unsigned char t) {
+static unsigned char new_fuse(unsigned char x, unsigned char y, unsigned char t, unsigned char gas) {
     unsigned char i;
     for (i = 0; i < NFUSE; ++i)
-        if (!fuse_t[i]) {
-            fuse_x[i] = x; fuse_y[i] = y; fuse_t[i] = t;
-            map[y][x] = LIT; draw_cell(x, y);
-            return;
-        }
+        if (!fuse_t[i]) { fuse_x[i] = x; fuse_y[i] = y; fuse_t[i] = t; fuse_gas[i] = gas; return 1; }
+    return 0;
+}
+static void light(unsigned char x, unsigned char y, unsigned char t) {
+    if (new_fuse(x, y, t, 0)) { map[y][x] = LIT; draw_cell(x, y); }
+}
+/* firedamp let out at (x, y): four steps after this one it blows up */
+static void gas_out(unsigned char x, unsigned char y, unsigned char t) {
+    new_fuse(x, y, t, 1);
+    fx_add(2, x, y);
+    k_sfx(SFX_TICK);
 }
 
 /* the 3x3 round (x, y): steel walls, the door and crystals stay; other dynamite goes off next */
@@ -372,6 +421,7 @@ static void explode(unsigned char x, unsigned char y) {
             if (k == WALL || k == EXIT || k == GEM || k == GEM2) continue;
             if (k == HERO) { alive = 0; blasted = 1; continue; }
             if (k == DYN) { light(cx, cy, 1); continue; }
+            if (k == GAS) gas_out(cx, cy, 1);
             if (k == LIT && (cx != x || cy != y)) {
                 for (i = 0; i < NFUSE; ++i) if (fuse_t[i] && fuse_x[i] == cx && fuse_y[i] == cy) fuse_t[i] = 1;
                 continue;
@@ -387,7 +437,8 @@ static void fuses(void) {
     for (i = 0; i < NFUSE; ++i)
         if (fuse_t[i]) {
             if (!--fuse_t[i]) explode(fuse_x[i], fuse_y[i]);
-            else draw_cell(fuse_x[i], fuse_y[i]);     /* the fuse flickers */
+            else if (!fuse_gas[i]) draw_cell(fuse_x[i], fuse_y[i]);     /* the fuse flickers */
+            else fx_add(2, fuse_x[i] - 1 + k_rand() % 3, fuse_y[i] - (k_rand() & 1));   /* the gas spreads */
         }
 }
 
@@ -409,12 +460,13 @@ static void snap_at(signed char dx, signed char dy) {
     unsigned char nx = hero_x + dx, ny = hero_y + dy, t = KIND(map[ny][nx]);
     face = dy > 0 ? 0 : dy < 0 ? 1 : dx > 0 ? 2 : 3;
     act = 0; snap = 1;
-    if (t == EMPTY && dyns) { --dyns; hud(); light(nx, ny, 4); k_sfx(SFX_TICK); return; }
+    if (FREE(map[ny][nx]) && dyns) { --dyns; hud(); light(nx, ny, 4); k_sfx(SFX_TICK); return; }
     if (t == DIRT) k_sfx(SFX_TICK);
+    else if (t == GAS) gas_out(nx, ny, 5);
     else if (t == GEM || t == GEM2) collect(nx, ny, t);
     else if (t == DYN) take_dyn();
     else return;
-    map[ny][nx] = EMPTY;
+    VACATE(nx, ny);
     redraw(nx, ny);
 }
 
@@ -422,10 +474,11 @@ static void move_hero(signed char dx, signed char dy) {
     unsigned char nx = hero_x + dx, ny = hero_y + dy, t = KIND(map[ny][nx]);
     face = dy > 0 ? 0 : dy < 0 ? 1 : dx > 0 ? 2 : 3;
     act = 0;
-    if (t != EMPTY && t != DIRT && t != ROCK && t != GEM && t != GEM2 && t != EXIT && t != DYN) return;
+    if (t != EMPTY && t != DIRT && t != ROCK && t != GEM && t != GEM2 && t != EXIT && t != DYN && t != GAS && t != RAIL)
+        return;
     if (t == ROCK) {
         /* push sideways into an empty cell */
-        if (dy || KIND(map[ny][nx + dx]) != EMPTY) return;
+        if (dy || !FREE(map[ny][nx + dx])) return;
         map[ny][nx + dx] = ROCK;
         draw_cell(nx + dx, ny);
         act = 2;
@@ -438,7 +491,8 @@ static void move_hero(signed char dx, signed char dy) {
         k_sfx(SFX_TICK);
         act = 1;
     } else if (t == DYN) take_dyn();
-    map[hero_y][hero_x] = EMPTY;
+    else if (t == GAS) { k_sfx(SFX_TICK); act = 1; gas_out(nx, ny, 5); }
+    VACATE(hero_x, hero_y);
     from_x = hero_x; from_y = hero_y;
     redraw(hero_x, hero_y);
     hero_x = nx; hero_y = ny;

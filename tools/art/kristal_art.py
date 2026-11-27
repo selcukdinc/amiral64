@@ -25,7 +25,7 @@ BACK = ["211", "322", "433"]
 PALS = {
     "terrain": ["000"] + BACK + ["310", "632", "953", "c85", "334", "667", "aab", "222", "555", "888", "ccc", "a74"],
     "crystal": ["000"] + BACK + ["013", "068", "0ac", "4ef", "aff", "fff", "730", "da2", "ff8", "433", "988", "fe6"],
-    "special": ["000"] + BACK + ["d22", "711", "fe4", "fff", "f80", "642", "863", "a95", "445", "99a", "741", "fa2"],
+    "special": ["000"] + BACK + ["d22", "711", "fe4", "fff", "f80", "642", "953", "c95", "445", "99a", "741", "fa2"],
     "miner": ["000", "111", "fca", "c86", "fc1", "a70", "ffe", "111", "36c", "238", "742", "421", "aab", "853", "fff", "f98"],
     "fx": ["000", "fff", "ff8", "4ef", "a86", "753", "432", "999", "666", "f80", "fe4", "000", "000", "000", "000", "000"],
     "icons": ["000", "111", "4ef", "0ac", "fff", "fc1", "a70", "e33", "811", "eee", "999", "d22", "fe4", "741", "888", "fa2"],
@@ -249,13 +249,11 @@ c = Canvas(16, 16); dynamite(c); big("dyn", c)
 c = Canvas(16, 16); dynamite(c, 0); big("dynlit0", c)
 c = Canvas(16, 16); dynamite(c, 1); big("dynlit1", c)
 
-c = Canvas(16, 16)                            # gas pocket: dirt with a faint green tint and bubbles
+c = Canvas(16, 16)                            # gas pocket: dirt whose lumps and specks are a shade greener
+dirt(c, 2)
 for y in range(16):
     for x in range(16):
-        n = noise(x, y, 3)
-        c.set(x, y, 10 if n < 150 else 9 if n < 220 else 11)
-for (x, y) in ((4, 5), (11, 9), (7, 12)):
-    c.set(x, y, 11); c.set(x + 1, y, 11); c.set(x, y - 1, 7)
+        c.set(x, y, {4: 9, 5: 9, 6: 10, 7: 11, 15: 11}.get(c.get(x, y), 10))
 big("gas", c)
 
 
@@ -485,10 +483,10 @@ LAV_BACK = ["200", "310", "421"]
 PALS.update({
     "terrain_buz": ["000"] + BUZ_BACK + ["235", "68a", "9bd", "dff", "334", "667", "aab", "223", "446", "779", "bcd", "aef"],
     "crystal_buz": ["000"] + BUZ_BACK + ["302", "a06", "e3c", "f8e", "fcf", "fff", "730", "da2", "ff8", "334", "889", "fe6"],
-    "special_buz": ["000"] + BUZ_BACK + ["d22", "711", "fe4", "fff", "f80", "689", "8ab", "acd", "445", "99a", "741", "fa2"],
+    "special_buz": ["000"] + BUZ_BACK + ["d22", "711", "fe4", "fff", "f80", "69a", "9bd", "dfe", "445", "99a", "741", "fa2"],
     "terrain_lav": ["000"] + LAV_BACK + ["100", "322", "543", "865", "433", "766", "a99", "211", "433", "766", "a98", "f60"],
     "crystal_lav": ["000"] + LAV_BACK + ["021", "072", "0b4", "4f8", "afc", "fff", "730", "da2", "ff8", "322", "755", "fe6"],
-    "special_lav": ["000"] + LAV_BACK + ["d22", "711", "fe4", "fff", "f80", "433", "644", "866", "445", "99a", "741", "fa2"],
+    "special_lav": ["000"] + LAV_BACK + ["d22", "711", "fe4", "fff", "f80", "332", "543", "875", "445", "99a", "741", "fa2"],
 })
 for n in ("terrain_buz", "crystal_buz", "special_buz", "terrain_lav", "crystal_lav", "special_lav"):
     use(n)

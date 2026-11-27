@@ -346,7 +346,7 @@ big exit3
 2ed44ff99ff44dd2
 2ed44ff99ff44dd1
 
-palette special 000 211 322 433 d22 711 fe4 fff f80 642 863 a95 445 99a 741 fa2
+palette special 000 211 322 433 d22 711 fe4 fff f80 642 953 c95 445 99a 741 fa2
 
 big dyn
 1213112312112211
@@ -403,22 +403,22 @@ big dynlit1
 1132111111213121
 
 big gas
-9b99ab9b9a9b9baa
-aababa99aa9aa999
-9aaaaa99aaaaa9ba
-abaa9aaaab9a9aa9
-baab799aaaaaaaaa
-a9babbaa9babaa9a
-aaaaaaa9aaba999a
-aaabaaaaaa9baaaa
-99ba9ababa97aab9
-a99aaaaaaaabba9a
-99abab9a9aa9aaba
-a99aaaa7aa9aba9a
-9ab9aa9bb9aabaa9
-9babbaa99a99baaa
-abab9aaaabaa9aab
-aa9aaaa9a9abbaaa
+bba99b99a9aaaaa9
+ba99aaaaa9aabaaa
+9a999aa9aabababa
+aaaaaabaaa99aaaa
+aa9aab9ba99aaaab
+ab9b999ba99aabaa
+a9aaaaaaaba9a999
+a9baa9aba999aaaa
+aaa9999bb9aabaab
+ba9aa9ab9aaa99ba
+ba9999ab9abbaaaa
+bab9aab9aaa99a9a
+aaaaa9aaa9ba9ba9
+aaa99a9a99ba9ab9
+babaaaaaabbaaba9
+baaaaa9a9abaaa9b
 
 big boom0
 5555555455555555
@@ -916,10 +916,10 @@ palette terrain_buz 000 112 223 334 235 68a 9bd dff 334 667 aab 223 446 779 bcd 
 
 palette crystal_buz 000 112 223 334 302 a06 e3c f8e fcf fff 730 da2 ff8 334 889 fe6
 
-palette special_buz 000 112 223 334 d22 711 fe4 fff f80 689 8ab acd 445 99a 741 fa2
+palette special_buz 000 112 223 334 d22 711 fe4 fff f80 69a 9bd dfe 445 99a 741 fa2
 
 palette terrain_lav 000 200 310 421 100 322 543 865 433 766 a99 211 433 766 a98 f60
 
 palette crystal_lav 000 200 310 421 021 072 0b4 4f8 afc fff 730 da2 ff8 322 755 fe6
 
-palette special_lav 000 200 310 421 d22 711 fe4 fff f80 433 644 866 445 99a 741 fa2
+palette special_lav 000 200 310 421 d22 711 fe4 fff f80 332 543 875 445 99a 741 fa2

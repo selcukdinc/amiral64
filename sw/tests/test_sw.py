@@ -298,6 +298,56 @@ walk(0x48, lambda: cell(1, 2) == LIT, limit=20)
 run(k, 30)
 check("kristal: the blast kills the miner", st() == ST_DEATH and "PATLADIN" in screen_text(k), f"state={st()}")
 
+# Faz 7: firedamp and mine carts, on a fresh level 1
+k, S = load_low("kristal")
+run(k, 40); tap(0x10, player=1); run(k, 10); tap(0x10); run(k, 30); tap(0x80); run(k, 10)
+RAIL, CART = 13, 14
+setc = lambda x, y, v: k.wr(S["_map"] + y * W + x, v)
+setr = lambda x, y, v: k.wr(S["_rail"] + y * W + x, v)
+# firedamp next to the miner: dug, it spreads for four steps and then blows up; the miner gets away
+setc(2, 1, GAS)
+k.pads[0] = 0x01
+f = 0; dug = boom = None; smoky = False
+while f < 120 and boom is None:
+    run(k, 1); f += 1
+    if dug is None and hx() == 2: dug = f
+    if hx() >= 4: k.pads[0] = 0
+    if any(k.rd(0x300 + 4 * i + 2) == 16 and k.rd(0x300 + 4 * i) < 240 for i in range(1, 5)): smoky = True
+    if cell(2, 1) == BOOM: boom = f
+k.pads[0] = 0
+check("kristal: firedamp spreads (smoke) and blows up four steps after it is dug",
+      dug is not None and boom is not None and 20 <= boom - dug <= 30 and smoky, f"dug={dug} boom={boom} smoke={smoky}")
+run(k, 20)
+check("kristal: the miner got away from the firedamp", peek(k, S, "alive") == 1 and hx() == 4 and cell(2, 2) != ROCK)
+# a closed-in test track: rails on rows 8 and 10 from x=19 to 29
+for y in range(7, 12):
+    for x in range(18, 31):
+        setc(x, y, WALL); setr(x, y, 0)
+for y in (8, 10):
+    for x in range(19, 30):
+        setc(x, y, RAIL); setr(x, y, RAIL)
+setc(20, 10, CART | 0x10); setc(23, 10, ROCK)          # row 10: a cart going right, a rock on the rails
+setc(20, 8, CART | 0x10); setc(20, 7, ROCK)            # row 8: a cart with a rock lying on it
+row10 = lambda: [cell(x, 10) for x in range(19, 30)]
+run(k, 6 * 2 * 7)
+r = row10()
+check("kristal: the cart pushes the rock along the rails", r.index(ROCK) >= 7 and CART in r and r.index(CART) == r.index(ROCK) - 1,
+      r)
+run(k, 6 * 2 * 4)
+r = row10()
+check("kristal: at the end it turns back", r[-1] == ROCK and r.index(CART) < 9, r)
+check("kristal: a rock lying on the cart holds it", cell(20, 8) == CART and cell(20, 7) == ROCK, [cell(x, 8) for x in range(19, 30)])
+check("kristal: rails stay where the cart was", all(cell(x, 8) == RAIL for x in range(21, 30)) and cell(21, 10) in (RAIL, CART))
+run(k, 1, shot="kristal_rails.png")
+# the miner on the rails in front of the cart is run over
+setc(hx(), hy(), 0)
+cx = 19 + row10().index(CART)                   # going left now: the miner two cells to its left
+k.wr(S["_hero_x"], cx - 2); k.wr(S["_hero_y"], 10); setc(cx - 2, 10, HERO)
+f = 0
+while f < 150 and st() == ST_PLAY:
+    run(k, 1); f += 1
+check("kristal: the cart runs the miner over", st() == ST_DEATH, f"state={st()} row={row10()}")
+
 k, S = load_game("yildiz")
 check("yildiz: fits in 20 KB", len(rom("game_yildiz.bin")) <= 0x5000)
 run(k, 10, shot="yildiz_title.png")
