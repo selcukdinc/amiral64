@@ -1,0 +1,19 @@
+name: DINAMIT
+need: 16
+time: 170
+intro: CTRL + YON BOSLUGA: DINAMIT KOY, KAC!
+route: g 4,1; auto 5; g 14,6; b L; b L; m RR; w 5; g 12,6; auto 4; g 26,1; g 17,6; b R; b R; m LL; w 5; g 19,6; auto; x
+solution: RRRDRRDRRRRUURDDRRDDRRDDDDRULUULllRR.....LLLLLULLDRRRRUUUUURRRRRRRRRRRRRDLLLLDLLLLDDDLrrLL.....RRRRRUDLLDDDDDRRRRRRRRRRRR
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WP..D......*.......*.....D....*W
+W.....*.......O.........*......W
+W..O......*.......*....O.......W
+W.....WWWWWWW......WWWWWWW.....W
+W..*..W*.+.*W..*...W*..*.W..*..W
+W.....W.*..*O......O.*.+.W.....W
+W..D..W*..*.W...O..W..*..W..D..W
+W.....WWWWWWW......WWWWWWW.....W
+W.*.......*.....*......*.....*.W
+W....O.......*.......O.........W
+W..*.....*.......D.......*....EW
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW

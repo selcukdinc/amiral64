@@ -52,58 +52,8 @@ enum { EMPTY, DIRT, WALL, ROCK, GEM, GEM2, EXIT, HERO, CRACK, DYN, LIT, GAS, BOO
 #define SPR_FX   1
 #define NFX      4
 
-static const char *const levels[3][H] = {
-  { "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
-    "WP.....O...*.....O.....*....O..W",
-    "W.O.O....O...O.*....O....*.....W",
-    "W....*..WWWWW......O.....WWW...W",
-    "W..O.....*.....O.....+.........W",
-    "W.....O.....O.....*......O..*..W",
-    "W.*......WWWWWWW.....O.........W",
-    "W....O.....*........*.....O....W",
-    "W..*....O.......O.......*......W",
-    "W.......*...O.....WWWWW....O.*.W",
-    "W.O..*......*...O......*......EW",
-    "W.....O...O.....*...O.....O....W",
-    "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" },
-  { "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
-    "W*.O.O.O.O.O.O.O.O.O.O.O.O.O..*W",
-    "W.............................PW",
-    "W.WWWWWWWWWWWWWW..WWWWWWWWWWWW.W",
-    "W.*..O..*..O..*....*..O..*..O..W",
-    "W..O..O..O..O.....O..O..O..O...W",
-    "W.......*.......+*.......*.....W",
-    "WWWWWWWWWWWW...OO...WWWWWWWWWWWW",
-    "W*..O....O..*......*..O....O..*W",
-    "W..O..*....O........O....*..O..W",
-    "W.......O.......E.......O......W",
-    "W*...O.....*...O...*.....O....*W",
-    "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" },
-  { "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
-    "WP..OOOO.....*.*.*.....OOOO....W",
-    "W...OOOO..W.........W..OOOO..*.W",
-    "W.*.......W...OOO...W.......*..W",
-    "WWWWWW..WWW...*+*...WWW..WWWWWWW",
-    "W.....*...O....O....O...*......W",
-    "W..O.....O*O..O*O..O*O.....O...W",
-    "W..*..O...O....O....O...O..*...W",
-    "W.WWWWWWWWWWW.....WWWWWWWWWWWW.W",
-    "W..*...O...*...O...*...O...*...W",
-    "W.O.*.O.*.O.*.O.*.O.*.O.*.O.*.OW",
-    "W.......................E......W",
-    "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" },
-};
-#define NLEVEL 3
-static const unsigned char need[NLEVEL] = { 10, 14, 18 };
-static const unsigned char lv_mine[NLEVEL] = { 0, 1, 2 };     /* which mine (colours, select screen row) */
-static const unsigned char lv_num[NLEVEL] = { 1, 1, 1 };      /* its number in the mine */
-static const unsigned char lv_time[NLEVEL] = { 150, 150, 150 };
-static const char *const lv_name[NLEVEL] = { "ILK KAZI", "BUZ KOPRUSU", "KAYA YAGMURU" };
-static const char *const lv_intro[NLEVEL] = {
-    "KAZ, TOPLA, SALLANAN KAYADAN KAC",
-    "CTRL + YON: YERINDEN KIPIRDAMADAN KAZ",
-    "TAKILIRSAN SHIFT BASILI: YENIDEN",
-};
+/* the levels: games/kristal/levels/<mine>-<n>.txt, packed by tools/kristal_levels.py (also the demo's moves) */
+#include "levels.h"
 static const char *const mine_name[3] = { "TOPRAK OCAK", "BUZ MAGARASI", "LAV DERINLIGI" };
 static const unsigned *const pal_mine[3][3] = {
     { pal_terrain, pal_crystal, pal_special },
@@ -124,7 +74,7 @@ static unsigned char cart_step;
 #define VACATE(x, y) (map[y][x] = rail[y][x])
 static unsigned cam, cam_target;
 /* the lantern: dark level, oil, the light now drawn (centre and radius squared + radius) */
-unsigned char dark, oil, loops;
+unsigned char dark, oil, loops, steps;            /* (steps: game steps, for the tests' replays) */
 static unsigned char lx, ly, lrr;
 /* distance squared by cell distance (far = more than any reach); statics, no calls: this runs a lot */
 static const unsigned char sq[32] = { 0, 1, 4, 9, 16, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
@@ -345,7 +295,8 @@ static void oil_hud(void) {
 
 static void load_level(void) {
     unsigned char x, y;
-    char c;
+    unsigned char c;
+    unsigned i;
     gems = 0; gems_total = 0; exit_open = 0; exit_stage = 0; alive = 1; won = 0; moving = 0; face = 0; act = 0;
     dark = lv_mine[level] == 2; oil = 99;
     lx = 0; ly = 0; lrr = lantern_rr();             /* (lx, ly set below, once the miner is found) */
@@ -356,7 +307,9 @@ static void load_level(void) {
     set_mine_palettes(lv_mine[level]);
     for (y = 0; y < H; ++y)
         for (x = 0; x < W; ++x) {
-            c = levels[level][y][x];
+            i = y * W + x;
+            c = lv_map[level][i >> 1];
+            c = cells[i & 1 ? c & 15 : (unsigned char)c >> 4];
             rail[y][x] = c == 'R' || c == 'A' ? RAIL : EMPTY;
             switch (c) {
             case 'W': map[y][x] = WALL; break;
@@ -680,13 +633,6 @@ static void box_close(void) {
         for (x = box_x >> 1; x <= (box_x + 20) >> 1 && x < W; ++x) draw_cell(x, y);
 }
 
-/* the demo: the first level played by itself (directions and how many steps) */
-static const unsigned char demo_path[] = {
-    BTN_RIGHT, 5, BTN_DOWN, 1, BTN_RIGHT, 2, BTN_UP, 1, BTN_RIGHT, 6, BTN_DOWN, 1, BTN_RIGHT, 1, BTN_DOWN, 1,
-    BTN_RIGHT, 3, BTN_DOWN, 4, BTN_RIGHT, 6, BTN_UP, 3, BTN_LEFT, 3, BTN_RIGHT, 3, BTN_UP, 2, BTN_RIGHT, 1,
-    BTN_UP, 1, BTN_LEFT, 2, 0, 40,
-};
-
 static void go(unsigned char s);
 
 /* ---- title */
@@ -820,7 +766,7 @@ static void play_frame(void) {
     } else if (time_left <= 20 && (frames60 & 31) == 0) hud();
     if (exit_open && exit_stage < 3 && (anim & 7) == 0) { ++exit_stage; draw_cell(exit_x, exit_y); }
     if (++tick >= TICK) {
-        tick = 0;
+        tick = 0; ++steps;
         moving = 0; snap = 0;
         from_x = hero_x; from_y = hero_y;
         if (demo) {

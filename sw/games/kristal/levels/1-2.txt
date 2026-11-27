@@ -1,0 +1,19 @@
+name: KAYA YOLU
+need: 14
+time: 160
+intro: KAYAYI YANDAN IT: BOSLUGA GIDER
+route: auto 5; g 8,5; m RR; auto 5; g 18,5; m RR; auto; x
+solution: DDRDDDDDRDLDDRRRRUUUUUURRRRDDRRDDRDDLUUURRRURRUURRRUURDRRRDDDDDRRDRRRR
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WP..*....W..*...O..W....*..O...W
+W..O..*..W.O..*....W..O....*...W
+W.*...O..W....O..*.W.*...O..*..W
+W....*...W.........W....*......W
+W..O.....O  ...*...O  .O.....*.W
+W.*...*..W.....O...W....*..O...W
+W....O...W..*....*.W..O......*.W
+W..*.....W.O...*...W....*...O..W
+W.....*..W...*.....W.*......*..W
+W..O.....W....O..*.W.....O....EW
+W.*...*..W..*......W..*....*...W
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW

@@ -1,0 +1,19 @@
+name: ILK KAZI
+need: 10
+time: 150
+intro: KAZ, TOPLA, SALLANAN KAYADAN KAC
+route: auto; x
+solution: DDRRDDLDDDDRRRDDLUUUUURRDRRRDDDRUURRRURUURDDRRDRRRRRRRRDRRRRDR
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WP...*....O.....*.....O....*...W
+W.....O.......O....*.......O...W
+W..*.....*..........O..*.......W
+W....O......WWWWWW.......O..*..W
+W.*......O.....*........*......W
+W.....*......O.....O.......O...W
+W..O.....*.........*....O......W
+W.......O....*..O.......*...*..W
+W.*..*.......WWWWWW.....O......W
+W......O..*.........*.......O.EW
+W...*.......O....*.......*.....W
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW

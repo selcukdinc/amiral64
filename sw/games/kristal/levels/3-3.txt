@@ -1,0 +1,19 @@
+name: SON OCAK
+need: 24
+time: 220
+intro: HER SEY BIR ARADA: SON KAPIYA ULAS
+route: g 4,1; auto 5; g 9,6; b R; w 8; g 10,8; auto 6; g 26,1; g 26,9; b L; b L; m RR; w 6; g 24,9; auto; x
+solution: RRRDDDDLDLRRRRRRUUUUURDDDDDr........RDDRRDDRURDDLLLUUULUUUUUUURRRRRRRRRRRRRRRRDDDDDRRDDDLLllRR......LLLLLULLDLDLURRRRRRDDRRRRR
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WP..D....*.....*....Y.....D.*..W
+W.....O.....*.......O.....*....W
+W..G........G.........G........W
+WRRRRRRRRRRRRRRARRRRRRRRRRRRRRRW
+W..*....*.O.....*.....*....*...W
+W.*.....*.......O........*..*..W
+WWWWWWWWWWCWWWWWWWWWWWWWWWWW.WWW
+W.*..*.*.. .*..W*.*..+.*W......W
+W*..*..... .*.*W.*..*..*O..*...W
+W..*..*.*. ..*.W*..*.*..W.G..*.W
+W.*..*..*. *..*W..*..*.*W.*...EW
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW

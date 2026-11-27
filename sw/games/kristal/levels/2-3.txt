@@ -1,0 +1,19 @@
+name: MADEN ARABASI
+need: 18
+time: 180
+intro: RAYDA ARABA GIDER GELIR: ONUNE CIKMA
+route: auto; x
+solution: DRDDDDURDDDDDLDURRRRURRRRDRRUUUUURDRRRRRRDDDDDLLUURRRRRDRRDRRRRRR
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WP...*......*......*.....*.....W
+W.*O..*..O......*...*.O..*..*..W
+W..............................W
+WRRRRRRRRRRRRARRRRRRRRRRRRRRRRRW
+W..*...O.....*....O.....*...*..W
+W.*......*..*...*..*...*....*..W
+W..............................W
+WRRRRRRARRRRRRRRRRRRORRRRRRRRRRW
+W..*......*.....O.....*......*.W
+W.*...*.....*......*....*..O...W
+W.*......O.......*......*.....EW
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW

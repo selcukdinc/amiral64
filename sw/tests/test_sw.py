@@ -132,7 +132,7 @@ def tap(mask, player=0, after=4):
 tap(0x10, player=1)                       # Enter = keyboard player 2 Start
 run(k, 10, shot="kristal_select.png")
 txt = screen_text(k)
-check("kristal: Start opens the mine select", st() == ST_SELECT and "TOPRAK OCAK" in txt and txt.count("KILITLI") == 2, txt)
+check("kristal: Start opens the mine select", st() == ST_SELECT and "TOPRAK OCAK" in txt and txt.count("KILITLI") == 8, txt)
 tap(0x10)
 run(k, 30, shot="kristal_card.png")
 txt = screen_text(k)
@@ -165,42 +165,43 @@ for _ in range(20):
 k.pads[0] = 0; run(k, 2)
 steps = [b - a for a, b in zip(xs, xs[1:])]
 check("kristal: the miner slides from cell to cell", max(steps) <= 4 and sum(1 for d in steps if d > 0) >= 8, xs)
-walk(0x01, lambda: hx() == 6)
-check("kristal: walks right through dirt", hx() == 6 and cell(5, 1) == 0, f"x={hx()}")
+# (level 1-1: a crystal at (5,1), a rock at (10,1), a crystal at (16,1))
+walk(0x01, lambda: hx() == 9)
+check("kristal: walks right through dirt", hx() == 9 and cell(3, 1) == 0 and cell(8, 1) == 0, f"x={hx()}")
 walk(0x04, lambda: hy() == 2)                 # down
-walk(0x01, lambda: hx() == 7)                 # right: under the rock at (7,1)
-k.pads[0] = 0x01                              # right again: the rock wobbles once, then falls into (7,2)
+walk(0x01, lambda: hx() == 10)                # right: under the rock at (10,1)
+k.pads[0] = 0x01                              # right again: the rock wobbles once, then falls into (10,2)
 wobbled = dusty = False
 for _ in range(30):
     run(k, 1)
-    if peek(k, S, "map", 1 * W + 7) & 0x20: wobbled = True
+    if peek(k, S, "map", 1 * W + 10) & 0x20: wobbled = True
     if any(13 <= k.rd(0x300 + 4 * i + 2) <= 15 and k.rd(0x300 + 4 * i) < 240 for i in range(1, 5)): dusty = True
-    if hx() == 8: k.pads[0] = 0
+    if hx() == 11: k.pads[0] = 0
 k.pads[0] = 0
 run(k, 12)
 check("kristal: the rock wobbles before it falls", wobbled)
-check("kristal: rock falls into the dug cell", cell(7, 2) == 3 and cell(7, 1) == 0, f"(7,1)={cell(7,1)} (7,2)={cell(7,2)}")
+check("kristal: rock falls into the dug cell", cell(10, 2) == 3 and cell(10, 1) == 0, f"(10,1)={cell(10,1)} (10,2)={cell(10,2)}")
 check("kristal: dust flies where the rock lands", dusty)
 pal5 = lambda: bytes(k.ppu.vram[0x5000 + 5 * 32 + 10:0x5000 + 5 * 32 + 18])
 c0 = pal5(); run(k, 9)
 check("kristal: the crystals' colours turn round", pal5() != c0)
-walk(0x08, lambda: hy() == 1)                 # up to (8,1)
-walk(0x01, lambda: hx() == 11)                # right to the crystal at (11,1)
-check("kristal: crystal collected", peek(k, S, "gems") == 1 and peek(k, S, "score", size=2) == 10,
+walk(0x08, lambda: hy() == 1)                 # up to (11,1)
+walk(0x01, lambda: hx() == 16)                # right to the crystal at (16,1)
+check("kristal: crystals collected", peek(k, S, "gems") == 2 and peek(k, S, "score", size=2) == 20,
       f"gems={peek(k, S, 'gems')} hero=({hx()},{hy()})")
 # B + direction: dig the dirt below without moving
 k.pads[0] = 0x44; run(k, 8); k.pads[0] = 0; run(k, 2)
-check("kristal: B + direction digs without moving", cell(11, 2) == 0 and (hx(), hy()) == (11, 1), f"({hx()},{hy()}) {cell(11, 2)}")
+check("kristal: B + direction digs without moving", cell(16, 2) == 0 and (hx(), hy()) == (16, 1), f"({hx()},{hy()}) {cell(16, 2)}")
 # a press shorter than a step is not lost
 k.pads[0] = 0x01; run(k, 1); k.pads[0] = 0; run(k, 9)
-check("kristal: a short press still moves one cell", (hx(), hy()) == (12, 1), f"({hx()},{hy()})")
+check("kristal: a short press still moves one cell", (hx(), hy()) == (17, 1), f"({hx()},{hy()})")
 # pause menu: Start, then Devam
 tap(0x10)
 check("kristal: Start opens the pause menu", st() == ST_PAUSE and "DURAKLADI" in screen_text(k) and "MENUYE DON" in screen_text(k),
       screen_text(k))
 run(k, 1, shot="kristal_pause.png")
 tap(0x10)
-check("kristal: Devam goes back to the level", st() == ST_PLAY and "DURAKLADI" not in screen_text(k) and hx() == 12)
+check("kristal: Devam goes back to the level", st() == ST_PLAY and "DURAKLADI" not in screen_text(k) and hx() == 17)
 k.wr(S["_time_left"], 1); k.wr(S["_time_left"] + 1, 0)
 run(k, 200, shot="kristal_timeout.png")
 check("kristal: time out costs a life", peek(k, S, "lives") == 2 and st() == ST_PLAY and (hx(), hy()) == (1, 1),
@@ -232,7 +233,7 @@ check("kristal: level end gives three stars", peek(k, S, "time_left", size=2) ==
       and lit == 3, f"score={peek(k, S, 'score', size=2)} stars={lit}")
 tap(0x10); run(k, 10)
 txt = screen_text(k)
-check("kristal: then the card of the next level", st() == ST_CARD and "BUZ KOPRUSU" in txt, txt)
+check("kristal: then the card of the next level", st() == ST_CARD and "KAYA YOLU" in txt, txt)
 save = bytes(k.ram[0x2E8:0x2F7])
 check("kristal: save area: level 2 open, three stars on level 1", save[0:2] == b"KO" and save[2] == 2 and save[3] == 3, save.hex())
 # switched on again (RAM kept): the save is read
@@ -242,21 +243,27 @@ run(k, 40)
 check("kristal: the best score on the title", "REKOR" in screen_text(k))
 tap(0x10, player=1); run(k, 10)
 txt = screen_text(k)
-check("kristal: the save is read when the game starts again", txt.count("KILITLI") == 1, txt)
+check("kristal: the save is read when the game starts again", txt.count("KILITLI") == 7, txt)
 tap(0x01); tap(0x10); run(k, 10)
-check("kristal: the opened level can be chosen", st() == ST_CARD and "BUZ KOPRUSU" in screen_text(k))
+check("kristal: the opened level can be chosen", st() == ST_CARD and "KAYA YOLU" in screen_text(k))
 # a wrong check byte: the save is not used
 k, S = load_low("kristal")
 k.ram[0x2E8:0x2F7] = save[:14] + bytes([save[14] ^ 1])
 run(k, 40); tap(0x10, player=1); run(k, 10)
-check("kristal: a broken save is not used", screen_text(k).count("KILITLI") == 2)
+check("kristal: a broken save is not used", screen_text(k).count("KILITLI") == 8)
 # left alone, the title plays a demo: the first level by itself, the door opens; a key ends it
 k, S = load_low("kristal")
 run(k, 660)
 check("kristal: the title starts a demo when left alone", st() == ST_PLAY and peek(k, S, "demo") == 1 and "DEMO" in screen_text(k))
-run(k, 330, shot="kristal_demo.png")
-check("kristal: the demo collects crystals and opens the door", peek(k, S, "gems") >= 10 and peek(k, S, "exit_open") == 1
-      and peek(k, S, "alive") == 1, f"gems={peek(k, S, 'gems')} alive={peek(k, S, 'alive')} ({hx()},{hy()})")
+# the demo is the level's solution: it collects the crystals and goes out of the door, then the title again
+most = opened = 0; died = False
+for f in range(700):
+    run(k, 1, shot="kristal_demo.png" if f == 300 else None)
+    if st() != ST_PLAY: break
+    most = max(most, peek(k, S, "gems")); opened |= peek(k, S, "exit_open"); died |= not peek(k, S, "alive")
+check("kristal: the demo collects the crystals and leaves by the door", most >= 10 and opened and not died and st() == ST_TITLE,
+      f"gems={most} open={opened} died={died} state={st()}")
+run(k, 620)
 tap(0x80)
 check("kristal: a key ends the demo", st() == ST_TITLE)
 
@@ -356,38 +363,69 @@ def kristal_save(unlocked, stars=(0,) * 9, best=0):
         c = (((c << 1) | (c >> 7)) & 255) ^ v
     return bytes(b + [c])
 k, S = load_low("kristal")
-k.ram[0x2E8:0x2F7] = kristal_save(3)
-run(k, 40); tap(0x10, player=1); run(k, 10); tap(0x01); tap(0x01); tap(0x10); run(k, 30); tap(0x80); run(k, 10)
+k.ram[0x2E8:0x2F7] = kristal_save(7)
+run(k, 40); tap(0x10, player=1); run(k, 10)
+for _ in range(6): tap(0x01)
+tap(0x10); run(k, 30); tap(0x80); run(k, 10)
 attr = lambda x, y: k.ppu.vram[0x4000 + 2 * ((2 + 2 * y) * 64 + 2 * x) + 1]
-check("kristal: level 3 is dark", st() == ST_PLAY and peek(k, S, "dark") == 1 and peek(k, S, "level") == 2 and "OCAK 3-1" in screen_text(k))
+check("kristal: level 3 is dark", st() == ST_PLAY and peek(k, S, "dark") == 1 and peek(k, S, "level") == 6 and "OCAK 3-1" in screen_text(k))
 check("kristal: the lantern lights the cells round the miner", attr(2, 1) in (4, 5, 6) and attr(3, 2) in (4, 5, 6) and attr(1, 4) in (4, 5, 6),
       [attr(x, 1) for x in range(1, 9)])
-check("kristal: far cells are dim, far crystals glow a little", attr(9, 5) == 7 and attr(13, 1) == 10, f"{attr(9, 5)} {attr(13, 1)}")
+check("kristal: far cells are dim, far crystals glow a little", attr(8, 5) == 7 and attr(15, 1) == 10 and attr(9, 5) == 9,
+      f"{attr(8, 5)} {attr(15, 1)} {attr(9, 5)}")
 pv = lambda p, i: k.ppu.vram[0x5000 + p * 32 + 2 * i] | k.ppu.vram[0x5000 + p * 32 + 2 * i + 1] << 8
 check("kristal: the dark palettes are dimmed copies", pv(7, 6) < pv(4, 6) and pv(10, 6) < pv(5, 6) and pv(7, 6) != 0, f"{pv(7, 6):03x} {pv(4, 6):03x}")
 run(k, 1, shot="kristal_dark.png")
 # walking: the light goes with the miner; each step's work fits in a frame (a main-loop pass every frame)
-# (level 3: right 2, down 2, right 6 under the rocks, which fall behind)
+# (level 3-1: right 2, down 1, right 6)
 l0 = peek(k, S, "loops"); f0 = k.frames
-for mask, until in ((0x01, lambda: hx() == 3), (0x04, lambda: hy() == 3), (0x01, lambda: hx() == 9)):
+for mask, until in ((0x01, lambda: hx() == 3), (0x04, lambda: hy() == 2), (0x01, lambda: hx() == 9)):
     walk(mask, until, limit=40)
 l1 = peek(k, S, "loops"); nf = k.frames - f0
 check("kristal: in the dark every frame gets its main-loop pass (a step fits in a frame)", (l1 - l0) & 255 == nf & 255,
       f"{(l1 - l0) & 255}/{nf & 255}")
 run(k, 30)
-check("kristal: the light went with the miner", (hx(), hy()) == (9, 3) and attr(9, 5) in (4, 5, 6) and attr(1, 1) == 7 and attr(2, 1) == 7,
-      f"({hx()},{hy()}) {attr(9, 5)} {attr(1, 1)}")
+check("kristal: the light went with the miner", (hx(), hy()) == (9, 2) and attr(9, 4) in (4, 5, 6) and attr(1, 1) == 7 and attr(2, 1) == 7,
+      f"({hx()},{hy()}) {attr(9, 4)} {attr(1, 1)}")
 # the oil runs low: the light shrinks to two cells; a bottle fills the lantern
 lit = lambda x, y: attr(x, y) in (4, 5, 6)
-check("kristal: full oil: the light reaches three cells", lit(9, 6) and lit(11, 4), f"{attr(9, 6)} {attr(11, 4)}")
+check("kristal: full oil: the light reaches three cells", lit(9, 5) and lit(11, 3), f"{attr(9, 5)} {attr(11, 3)}")
 k.wr(S["_oil"], 20); run(k, 70)
-check("kristal: low oil: the light shrinks", not lit(9, 6) and not lit(11, 4) and lit(9, 4) and lit(10, 3)
-      and int(screen_text(k).splitlines()[1][14:16]) <= 20, f"{attr(9, 6)} {attr(11, 4)} {screen_text(k).splitlines()[1]}")
+check("kristal: low oil: the light shrinks", not lit(9, 5) and not lit(11, 3) and lit(9, 3) and lit(10, 2)
+      and int(screen_text(k).splitlines()[1][14:16]) <= 20, f"{attr(9, 5)} {attr(11, 3)} {screen_text(k).splitlines()[1]}")
 setc = lambda x, y, v: k.wr(S["_map"] + y * W + x, v)
 OIL = 15
 setc(hx() - 1, hy(), OIL)
 x0 = hx(); walk(0x02, lambda: hx() == x0 - 1, limit=20)
 check("kristal: an oil bottle fills the lantern", peek(k, S, "oil") >= 59, f"oil={peek(k, S, 'oil')}")
+
+# Faz 9: every level is solved by its stored moves (tools/kristal_sim.py plans them on a model of the rules)
+sys.path.insert(0, os.path.join(HERE, "../../tools"))
+from kristal_sim import parse_level, decode
+LV = os.path.join(HERE, "../games/kristal/levels")
+BTN = {"": 0, "U": 0x08, "D": 0x04, "L": 0x02, "R": 0x01}
+for i, name in enumerate(sorted(os.listdir(LV))):
+    keys, _ = parse_level(os.path.join(LV, name))
+    moves = decode(keys["solution"])
+    k, S = load_low("kristal")
+    k.ram[0x2E8:0x2F7] = kristal_save(9)
+    run(k, 40); tap(0x10, player=1); run(k, 10)
+    for _ in range(i): tap(0x01)
+    tap(0x10); run(k, 30); tap(0x80); run(k, 3)
+    ok_start = st() == ST_PLAY and peek(k, S, "level") == i
+    done = 0
+    for m in moves:
+        k.pads[0] = BTN[m[1]] | 0x40 if m.startswith("b") else BTN[m]
+        s0 = peek(k, S, "steps")
+        for _ in range(14):
+            run(k, 1)
+            if peek(k, S, "steps") != s0 or st() != ST_PLAY: break
+        if st() != ST_PLAY: break
+        done += 1
+    k.pads[0] = 0
+    run(k, 3)
+    check(f"kristal: level {name[:3]} is solved by its moves", ok_start and st() == ST_CLEAR and peek(k, S, "gems") >= int(keys["need"]),
+          f"state={st()} after {done}/{len(moves)} moves, gems={peek(k, S, 'gems')}, at ({hx()},{hy()})")
 
 k, S = load_game("yildiz")
 check("yildiz: fits in 20 KB", len(rom("game_yildiz.bin")) <= 0x5000)

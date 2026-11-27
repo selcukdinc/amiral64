@@ -1,0 +1,19 @@
+name: KARANLIK
+need: 18
+time: 180
+intro: FENERIN YAGI AZALIR: YAG SISESI TOPLA
+route: auto; x
+solution: RRRDRRDRRRDDDDDLLDDLDLLUULLUUUUDRRRRRRRRRRR......LD.RRRUUURRURURRDDDDDDRDDDRRRRRRRRR
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WP..*.....O....*......O.....*..W
+W.....*.......Y.....*......O...W
+W..O.....*.WWWWWW.*.....*......W
+W.....O........*.....O......*..W
+W.*......Y...O......*....Y.....W
+W....*.......*....O.......*....W
+W..O.....*.....*........*...O..W
+W......*...WWWWWW....*.........W
+W.*..O.........*.......O....*..W
+W.....*....Y.....*..........O..W
+W...*.....O.....*.....*......*EW
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW

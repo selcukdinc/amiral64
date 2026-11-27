@@ -37,6 +37,11 @@ $(B)/%/art.h: games/%/art.txt ../tools/gfx.py
 $(B)/%/main.o: games/%/main.c lib/konsol.h lib/ses.h $(B)/%/art.h $(B)/font.h $$(if $$(wildcard games/$$*/muzik.ses),$(B)/$$*/muzik.h)
 	$(CC65) -O -t none -I lib -I games/$* -I $(B)/$* -I $(B) -o $(B)/$*/main.s $<
 	$(CA65) -o $@ $(B)/$*/main.s
+# Kristal Ocak's levels: games/kristal/levels/*.txt (tools/kristal_sim.py checks and solves them)
+$(B)/kristal/levels.h: $(wildcard games/kristal/levels/*.txt) ../tools/kristal_levels.py ../tools/kristal_sim.py
+	mkdir -p $(dir $@)
+	python3 ../tools/kristal_levels.py $@ $(wildcard games/kristal/levels/*.txt)
+$(B)/kristal/main.o: $(B)/kristal/levels.h
 # music and sound effects of a game: games/<name>/muzik.ses (MML, tools/sesc.py) -> muzik.h + muzik.o
 SESC = python3 ../tools/sesc.py
 $(B)/%/muzik.h $(B)/%/muzik.s: games/%/muzik.ses lib/ortak.ses ../tools/sesc.py

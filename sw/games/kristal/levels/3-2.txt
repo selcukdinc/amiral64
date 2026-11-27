@@ -1,0 +1,19 @@
+name: KOR DUMAN
+need: 20
+time: 190
+intro: KARANLIKTA GRIZU VE ARABA: DIKKAT
+route: auto 4; g 10,8; b L; m RR; w 6; g 8,8; auto 4; g 16,8; b R; m LL; w 6; g 18,8; auto; x
+solution: RRRRDDDDLLRRRRRUUURRDDDDDDlRR......LLLLLULDRRRRRRRRRRrLL......RRRRRUDRDRRRURURDLLLLLLLLDDDRRRRRRRRRRRRR
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WP...*.....G.....*.....G.....*.W
+W..O......*....O.......*....Y..W
+W.....G.......................GW
+WRRRRRRRRRRRRRRRARRRRRRRRRRRRRRW
+W..*....*.........*......*..*..W
+W.WWWWWWW.....Y...WWWWWWWWW....W
+W.W*..+.W.........W*..*..+W..*.W
+W.W.*..*OG.......GO.*...*.W....W
+W.W*.*..W....O....W..*.*..W.*..W
+W.WWWWWWW....*....WWWWWWWWW....W
+W....*.....G.....*.......*...*EW
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW

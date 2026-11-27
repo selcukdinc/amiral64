@@ -215,8 +215,12 @@ TITLE ─► OCAK SEÇ ─► BÖLÜM KARTI ─► OYUN ◄──► DURAKLAT (D
 | | 3-2 | Karanlık + grizu + araba |
 | | 3-3 | Final: hepsi bir arada |
 
-- Bölümler `levels/*.txt` dosyalarında tutulur ve araçla C tablolarına çevrilir.
-- Her bölümün çözülebilir olduğu, kaydedilmiş bir oynanış senaryosuyla test edilir.
+- Bölümler `sw/games/kristal/levels/<ocak>-<n>.txt` dosyalarında tutulur. `tools/kristal_levels.py` onları hücre başına 4 bitle paketleyip C tablosuna çevirir.
+- Her bölümün çözülebilir olduğu, kaydedilmiş bir oynanış senaryosuyla test edilir:
+  - `tools/kristal_sim.py` oyunun kurallarının Python modelidir. Bölüm dosyasındaki `route:` satırını (git, kaz, dinamit, bekle, çık) adım adım hamlelere çevirir.
+  - `--write` seçeneği bu hamleleri dosyaya `solution:` olarak yazar.
+  - `test_sw.py` her bölümü emülatörde bu hamlelerle oynar ve bölüm sonuna varıldığını denetler.
+- Başlık demosu 1-1'in çözümüdür.
 
 **Bitti sayılması için**
 - 9 bölümün de çözüm senaryosu geçer.
