@@ -7,6 +7,8 @@
 #include "konsol.h"
 #include "bigtext.h"
 #include "art.h"
+#include "ses.h"
+#include "muzik.h"
 
 #define WELL_X 15          /* tile column of the well's first column */
 #define WELL_Y 5           /* tile row of the first visible row */
@@ -85,30 +87,22 @@ static unsigned char cell_of(unsigned mask, unsigned char x, unsigned char y) {
     return (mask >> (15 - (y * 4 + x))) & 1;
 }
 
-/* ---------------------------------------------------------------- sound */
-static void tone(unsigned char ch, unsigned p, unsigned char vol, unsigned char env) { k_tone(ch, p, 0xA0 | vol, env); }
-static void sfx_move(void)   { tone(0, 0x0C0, 3, 0x00); }
-static void sfx_rotate(void) { tone(0, 0x090, 5, 0x01); }
-static void sfx_lock(void)   { k_tone(3, 0x030, 0x86, 0x01); }
-static void sfx_drop(void)   { k_tone(3, 0x050, 0x8A, 0x02); }
-static void sfx_hold(void)   { tone(0, 0x060, 6, 0x01); }
+/* ---------------------------------------------------------------- sound (games/blok/muzik.ses) */
+#define sfx_move()   ses_efekt(sfx_kay)
+#define sfx_rotate() ses_efekt(sfx_don)
+#define sfx_lock()   ses_efekt(sfx_kilit)
+#define sfx_drop()   ses_efekt(sfx_dus)
+#define sfx_hold()   ses_efekt(sfx_tut)
+static unsigned char danger;           /* the danger tune is on */
 
-/* a small original tune: square 1 melody, triangle bass; faster at higher levels */
-static const unsigned char melody[32] = {
-    1, 3, 5, 4, 3, 2, 1, 0,   5, 0, 7, 6, 5, 4, 3, 0,
-    4, 6, 8, 7, 6, 5, 4, 0,   3, 5, 4, 3, 2, 9, 1, 0 };
-static const unsigned mel_period[10] = { 0, 443, 394, 372, 332, 295, 279, 248, 221, 497 };   /* A4 B4 C5 D5 E5 F5 G5 A5 G4 */
-static const unsigned bass_period[4] = { 443, 372, 331, 295 };                               /* A2 C3 D3 E3 */
-static unsigned char mus_step, mus_t, music_on = 1;
-static void music(void) {
-    unsigned char n, len = 9 - (level > 8 ? 4 : level >> 1);
-    if (!music_on || game_over) return;
-    if (++mus_t < len) return;
-    mus_t = 0;
-    n = melody[mus_step & 31];
-    if (n) k_tone(1, mel_period[n], 0xA6, 0x02);
-    if ((mus_step & 3) == 0) k_tone(2, bass_period[(mus_step >> 3) & 3] >> ((mus_step & 4) ? 1 : 0), 0x8C, 0x24);
-    ++mus_step;
+/* the music follows the game: faster each level, the danger tune when the stack is near the top */
+static void music_for_stack(void) {
+    unsigned char y, x, top = ROWS;
+    for (y = 0; y < ROWS && top == ROWS; ++y)
+        for (x = 0; x < COLS; ++x) if (board[y][x]) { top = y; break; }
+    if (!danger && top < HIDDEN + 6) { danger = 1; ses_muzik(mus_tehlike); }
+    else if (danger && top >= HIDDEN + 9) { danger = 0; ses_muzik(mus_tema); }
+    ses_hizlan(danger ? 0 : level * 3);
 }
 
 /* ---------------------------------------------------------------- the bag */
@@ -261,7 +255,7 @@ static void new_piece(unsigned char p) {
     lock_t = 0; lock_moves = 0; fall_t = 0;
     if (!fits(cur, rot, px, py)) {
         game_over = 1;
-        k_sfx(SFX_LOSE);
+        ses_muzik(mus_bitti);
     }
 }
 
@@ -310,10 +304,10 @@ static void lock_piece(void) {
         if (level > 15) level = 15;
         for (i = 0; i < nclear; ++i) burst(clear_rows_[i], nclear == 4 ? 6 : 4);
         msg_t = t;
-        if (nclear == 4) { shake = 12; k_sfx(SFX_BOOM); k_print(WELL_X + 2, 27, "DORTLU!", 1); }
-        else k_sfx(SFX_PICKUP);
-        if (level != old) { k_sfx(SFX_WIN); k_print(WELL_X + 1, 28, "SEVIYE UP", 2); }
-    } else spawn();
+        if (nclear == 4) { shake = 12; ses_efekt(sfx_dortlu); k_print(WELL_X + 2, 27, "DORTLU!", 1); }
+        else { ses_perde(nclear * 3 - 3); ses_efekt(sfx_sil); }
+        if (level != old) { ses_efekt(sfx_seviye); k_print(WELL_X + 1, 28, "SEVIYE UP", 2); }
+    } else { spawn(); music_for_stack(); }
     draw_side();
 }
 
@@ -414,6 +408,9 @@ static void title(void) {
     unsigned char i, p;
     unsigned char fx[8], fy[8], fp[8];
     background();
+    ses_muzik(mus_tema);
+    ses_hizlan(0);
+    ses_ses(15);
     panel(8, 4, 24, 7);
     big_reset();
     big_center(6, "BLOK YAGMURU");
@@ -442,7 +439,7 @@ static void title(void) {
     }
     k_seed(t * 251u + 17);
     k_hide_sprites(0);
-    k_sfx(SFX_WIN);
+    ses_efekt(sfx_basla);
 }
 
 static void play(void) {
@@ -453,6 +450,9 @@ static void play(void) {
     bag_n = 0; hold = 255; shake = 0;
     for (i = 0; i < NP; ++i) plife[i] = 0;
     draw_playfield();
+    danger = 0;
+    ses_muzik(mus_tema);
+    ses_hizlan(level * 3);
     next_q[0] = from_bag(); next_q[1] = from_bag(); next_q[2] = from_bag();
     spawn();
     das_t = 0; das_dir = 0;
@@ -476,13 +476,13 @@ static void play(void) {
                 for (x = 0; x < COLS; ++x) { shown[9][x] = 255; shown[11][x] = 255; }
                 dirty = 1;
             }
-            k_sfx(SFX_TICK);
+            ses_ses(paused ? 4 : 15);
+            ses_efekt(sfx_duraklat);
         }
         if (paused) {
             if (p & BTN_SELECT) k_menu();
             continue;
         }
-        music();
         particles();
         if (shake) { --shake; k_scroll((shake & 2) ? 2 : 0, (shake & 1) ? 1 : 0); }
         else k_scroll(0, 0);
@@ -493,6 +493,7 @@ static void play(void) {
                 collapse();
                 nclear = 0;
                 spawn();
+                music_for_stack();
             }
             draw_board();
             continue;

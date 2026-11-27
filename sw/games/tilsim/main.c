@@ -12,6 +12,8 @@
 #include "konsol.h"
 #include "bigtext.h"
 #include "art.h"
+#include "ses.h"
+#include "muzik.h"
 
 #define PAL_CRED 4          /* 4 red card, 5 black card; +2 selected; +4 glowing */
 #define PAL_BACK 10
@@ -170,10 +172,10 @@ static void set_back(u8 kind) {           /* card back colours of a deck (palett
 }
 
 /* ---------------------------------------------------------------- sound */
-static void tone(u8 ch, unsigned p, u8 ctl, u8 env) { k_tone(ch, p, ctl, env); }
-static void blip(u8 step) { tone(0, 0x0C0 - step * 10, 0xA8, 0x01); }
-static void clink(void) { tone(1, 0x050, 0x6A, 0x01); }
-static void thud(void) { k_tone(3, 0x030, 0x8A, 0x02); }
+/* sound (games/tilsim/muzik.ses, in the cartridge's extra data) */
+static void blip(u8 step) { ses_perde(step); ses_efekt(sfx_say); }   /* one step higher each time */
+#define clink() ses_efekt(sfx_sikke)
+#define thud()  ses_efekt(sfx_tok)
 
 /* ---------------------------------------------------------------- floating numbers (sprites) */
 static void charm_name(u8 k, u8 pal);
@@ -477,7 +479,7 @@ static u32 score_hand(void) {
     if (total > best_hand) best_hand = total;
     blank(16, 13, 22, 1);
     text(16, 13, "=", 0); num(18, 13, total, 1);
-    tone(0, 0x060, 0xAF, 0x03);
+    ses_efekt(sfx_carpan);
     for (i = 0; i < (fast ? 15 : 40); ++i) k_wait_frame();
     return total;
 }
@@ -525,6 +527,7 @@ static u8 play_gate(void) {
     shuffle();
     refill();
     k_clear_map();
+    ses_muzik(b != 255 ? mus_bekci : mus_kapi);
     draw_all();
     /* deal: the deck slides in */
     for (i = 0; i < 8; ++i) { blip(i); k_wait_frame(); k_wait_frame(); }
@@ -623,6 +626,7 @@ static void shop(void) {
     if (free_rerolls) reroll = 0;
     roll_offers();
     k_clear_map();
+    ses_muzik(mus_pazar);
     draw_top();
     text(17, 1, "PAZAR", 1);
     draw_charms();
@@ -657,7 +661,7 @@ static void shop(void) {
                 if (offer_type[sel]) ++hlevel[offer[sel]];
                 else { charm[ncharm] = offer[sel]; charm_val[ncharm] = 0; ++ncharm; }
                 sold[sel] = 1;
-                k_sfx(SFX_PICKUP);
+                ses_efekt(sfx_al);
                 draw_charms(); draw_offer(sel, 0);
             } else thud();
         }
@@ -720,6 +724,7 @@ static u8 gate_map(void) {
     u8 g, x, p, b = boss[stop_ & 7];
     k_clear_map();
     k_hide_sprites(0);
+    ses_muzik(mus_harita);
     draw_top();
     blank(0, 1, 40, 1);
     text(1, 1, "SIRADAKI KAPI", 1);
@@ -754,7 +759,7 @@ static u8 gate_map(void) {
         if (p & (BTN_A | BTN_START)) { k_hide_sprites(0); return 1; }
         if (p & BTN_B && gate < 2) {
             apply_tag(gate);
-            k_sfx(SFX_PICKUP);
+            ses_efekt(sfx_al);
             k_hide_sprites(0);
             return 0;
         }
@@ -805,14 +810,14 @@ static void run(void) {
             text(8, 14, "DURAK", 0); k_print_num(14, 14, stop_ + 1, 1, 1);
             text(17, 14, "EN IYI EL", 0); num(27, 14, best_hand, 1);
             text(13, 15, "SHIFT: BASLIGA", 0);
-            k_sfx(SFX_LOSE);
+            ses_muzik(mus_bozuldu);
             do k_wait_frame(); while (!((pad_new[0] | pad_new[1]) & (BTN_A | BTN_START)));
             return;
         }
         SYS_TEST = 0xE2;
         k_hide_sprites(0);
         banner("KAPI ACILDI!", 1);
-        k_sfx(SFX_WIN);
+        ses_muzik(mus_zafer);
         g = cash_out();
         text(12, 15, "+", 1); k_print_num(13, 15, g, 2, 1); text(16, 15, "ALTIN", 1);
         sparks(50);
@@ -840,6 +845,7 @@ static void title(void) {
     char sd[2];
     k_clear_map();
     k_hide_sprites(0);
+    ses_muzik(mus_baslik);
     big_reset();
     big_center(1, "TILSIM");
     text(12, 4, "KADERIN KARTLARI", 2);
@@ -895,11 +901,12 @@ static void title(void) {
         if (row == 1 && p & BTN_START) break;
     }
     k_hide_sprites(0);
-    k_sfx(SFX_WIN);
+    ses_efekt(sfx_al);
 }
 
 void main(void) {
     static const u8 slots[8] = { 0, 4, 8, 12, 16, 20, 24, 28 };
+    k_ek_yukle();                          /* the music, from the cartridge (before anything else uses its port) */
     k_init();
     PPU_CTRL = 0;
     k_vunpack(TILE_BASE * 32, tiles_data);

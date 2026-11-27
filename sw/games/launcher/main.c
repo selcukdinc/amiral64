@@ -5,6 +5,8 @@
  * at $FFF0 loads the game. Coming back from a game skips the splash and keeps the selection. */
 #include "konsol.h"
 #include "art.h"
+#include "ses.h"
+#include "muzik.h"
 #include "bigtext.h"
 
 #define CART_ADDR_L REG(0x8710)
@@ -193,12 +195,6 @@ static void motes_step(unsigned char first) {
     }
 }
 
-/* ---------------------------------------------------------------- sound */
-static void note(unsigned char ch, unsigned period, unsigned char vol, unsigned char decay) {
-    k_tone(ch, period, 0x80 | 0x20 | vol, decay);
-}
-static void tri(unsigned period, unsigned char len) { k_tone(2, period, 0x8F, len << 4 | 3); }
-static void noise(unsigned char p, unsigned char vol) { k_tone(3, p, 0x80 | vol, 0x02); }
 
 /* ---------------------------------------------------------------- the strip of cards */
 static void draw_card(unsigned char g, unsigned char selected) {
@@ -282,7 +278,8 @@ static void splash(void) {
     k_palette(0, (const unsigned *)"\0\0", 1);
     for (i = 0; i < 30; ++i) clear_rows(i, 1);
     animate_bg();
-    /* sparks fly in from a ring to the centre */
+    /* sparks fly in from a ring to the centre (the opening jingle climbs with them) */
+    ses_muzik(mus_acilis);
     for (f = 0; f < 64; ++f) {
         k_wait_frame(); ++t;
         if (skip()) return;
@@ -292,14 +289,9 @@ static void splash(void) {
             k_sprite(i, 152 + ((ring_x[k] * (int)r) >> 6) + (i & 1 ? 0 : 3),
                          88 + ((ring_y[k] * (int)r) >> 7), (f + i) & 4 ? S_spark : S_dot, PAL_SPR);
         }
-        if (f == 8)  note(0, 372, 10, 3);     /* C5 */
-        if (f == 20) note(0, 295, 10, 3);     /* E5 */
-        if (f == 32) note(0, 248, 11, 3);     /* G5 */
-        if (f == 44) { note(0, 186, 12, 4); note(1, 248, 6, 5); tri(372, 6); }   /* C6 + G5, bass C3 */
     }
     k_hide_sprites(0);
-    /* flash, then the title fades in over the backdrop gradient */
-    noise(2, 8);
+    /* flash (the jingle's crash), then the title fades in over the backdrop gradient */
     big_title(10, "RETRO KONSOL");
     for (f = 0; f < 40; ++f) {
         k_wait_frame(); ++t;
@@ -318,7 +310,7 @@ static void splash(void) {
         char one[2];
         one[0] = sub[i]; one[1] = 0;
         k_print(7 + i, 14, one, 2);
-        if (sub[i] != ' ') note(1, 120 + (i & 3) * 8, 4, 1);
+        if (sub[i] != ' ') ses_efekt(sfx_yazi);
         k_wait_frame(); k_wait_frame(); t += 2;
         animate_bg();
         if (skip()) return;
@@ -342,14 +334,14 @@ static unsigned char launch_idx;
 static void launch(void) {
     unsigned char f;
     WARM[0] = 'K'; WARM[1] = 'W'; WARM[2] = sel;
-    note(0, 186, 12, 3); note(1, 124, 8, 4); tri(248, 4);
+    ses_dur();
+    ses_efekt(sfx_basla);
     for (f = 0; f < 20; ++f) {
         k_wait_frame(); ++t;
         if (bright) --bright;
         if (bright) --bright;
         animate_bg();
         title_palette(bright >> 1);
-        if (f == 6) noise(1, 6);
     }
     k_hide_sprites(0);
     k_wait_frame();
@@ -372,7 +364,7 @@ static void choose(signed char d) {
     draw_card(old, 0);
     draw_card(sel, 1);
     draw_info();
-    note(0, 0x0A0 - (sel << 3), 7, 1);
+    ses_efekt(sfx_secim);
 }
 
 void main(void) {
@@ -400,6 +392,7 @@ void main(void) {
         for (;;) k_wait_frame();
     }
     if (!warm) splash();
+    ses_muzik(mus_menu);
     bright = 0;
     draw_frame_static();
     draw_strip();

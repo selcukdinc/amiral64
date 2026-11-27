@@ -293,7 +293,7 @@ for x in range(10):
 BOARD = S["_board"]
 for x in (0, 1, 2, 7, 8, 9): k.wr(BOARD + 21 * 10 + x, 3)
 k.wr(S["_cur"], 0); k.wr(S["_rot"], 0); k.wr(S["_px"], 3); k.wr(S["_py"], 1)
-hold(k, 0x08, 2)                                    # Up: hard drop
+hold(k, 0x08, 4)                                    # Up: hard drop (the redraw after the board was cleared takes 2 frames)
 run(k, 40, shot="blok_clear.png")
 check("blok: a full row is cleared and scored", peek(k, S, "lines", size=2) == 1 and peek(k, S, "score", size=4) >= 100
       and all(k.rd(BOARD + 21 * 10 + x) == 0 for x in range(10)),
@@ -632,6 +632,49 @@ for i in range(8):
     if not ok: break
     run(k, 120)
 check("ses: the 8 standard effects play", ok, f"effect {i}")
+
+# a recording renders to sound (the registers set before it count too)
+sys.path.insert(0, os.path.join(HERE, "../../tools"))
+import sesdinle
+kd, Sd = sesdinle.player("deneme")
+lg, nf = sesdinle.record(kd, Sd, 1, 0, 120, True)
+x = render_log(lg, nf, 2)
+check("ses: a recorded song renders to sound (sesdinle)", float(np.sqrt((x ** 2).mean())) > 0.03,
+      f"rms {float(np.sqrt((x ** 2).mean())):.4f}")
+
+# ---------------------------------------------------------------- every game has its own music
+def plays_music(k, S, frames=120):
+    k.apu_log = []
+    run(k, frames)
+    loud = {r >> 2 for f, r, v in k.apu_log if r < 16 and (r & 3) == 2 and v & 15}
+    return k.rd(S["_ses_playing"]) == 1 and len(loud) >= 2, loud
+for g, low in (("blok", 0), ("yildiz", 0), ("fitil", 0), ("olimpiyat", 0), ("koridor", 1), ("tilsim", 1)):
+    k, S = load_low(g) if low else load_game(g)
+    ok, loud = plays_music(k, S)
+    check(f"{g}: its title music plays (channels {sorted(loud)})", ok)
+    check(f"{g}: no old k_sfx effects linked", "_sfx_std_blip" not in S)
+k, S = load_low("tilsim")
+ek = rom("game_tilsim.bin.ek")
+run(k, 5)
+check("tilsim: the music came from the cartridge's extra data to $B000",
+      len(ek) > 1000 and bytes(k.rd(0xB000 + i) for i in range(len(ek))) == ek, f"{len(ek)} bytes")
+k = Konsol(rom("boot.bin"), rom("cart.bin"))
+k.apu_log = []
+run(k, 90)
+check("launcher: the opening jingle plays with the sparks", any(r == 2 and v & 15 for f, r, v in k.apu_log))
+# the real cartridge: Tilsim loaded by the boot ROM finds its music after itself
+full = rom("cart.bin")
+k = Konsol(rom("boot.bin"), full)
+k.pads[0] = 0x20; run(k, 140); k.pads[0] = 0; run(k, 5)      # Select at power-up: the boot ROM menu
+for _ in range(3):
+    k.pads[0] = 0x04; run(k, 3); k.pads[0] = 0; run(k, 3)    # down to TILSIM (4th entry)
+k.pads[0] = 0x80; run(k, 3); k.pads[0] = 0
+for _ in range(400):
+    run(k, 1)
+    if k.test == 0xE0: break
+run(k, 30)
+check("tilsim from the cartridge: extra data read in after loading", k.test == 0xE0
+      and bytes(k.rd(0xB000 + i) for i in range(len(ek))) == ek, f"test {k.test}")
 
 # no cartridge
 k = run(Konsol(rom("boot.bin"), b""), 150)

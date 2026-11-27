@@ -436,6 +436,15 @@ class Compiler:
             i += 1
         return total
 
+    def loop_rows(self, lab):
+        """rows from a stream's L point to its end (None: no loop)"""
+        blob = next(b for b in self.blobs if b[0] == lab)
+        if len(blob) < 3 or blob[2] is None:
+            return None
+        items = blob[1]
+        # rows of the part after the loop point: walk from the start of the stream, count after the label
+        return self.rows(items[blob[2]:])
+
     # ------------------------------------------------------------ output
     def write(self, src, out_s, out_h, lst="ses", segment=None):
         if not self.insts:
@@ -449,7 +458,19 @@ class Compiler:
             labs = []
             for ch in CHANNELS:
                 labs.append(self.stream(name, ch, chans[ch], grid, False, True) if ch in chans else "0")
-            rows = max(self.rows(next(b[1] for b in self.blobs if b[0] == lab)) for lab in labs if lab != "0")
+            per = {ch: self.rows(next(b[1] for b in self.blobs if b[0] == lab)) for ch, lab in zip(CHANNELS, labs) if lab != "0"}
+            loops = {ch: self.loop_rows(lab) for ch, lab in zip(CHANNELS, labs) if lab != "0"}
+            lp = {ch: v for ch, v in loops.items() if v is not None}
+            if lp:
+                if len(lp) != len(per) or len(set(lp.values())) > 1:
+                    raise Err(f"song {name}: the channels loop over different lengths (rows: {loops})")
+                period = next(iter(lp.values()))
+                starts = {ch: per[ch] - lp[ch] for ch in lp}
+                if len({v % period for v in starts.values()}) > 1:
+                    raise Err(f"song {name}: the loops start out of step (rows before L: {starts}, loop {period})")
+            elif len(set(per.values())) > 1:
+                raise Err(f"song {name}: the channels are not the same length (rows: {per})")
+            rows = max(per.values())
             self.lengths[name] = (rows * 256 + tempo - 1) // tempo
             exp.append(f"_mus_{name}")
             body.append(f"_mus_{name}: .byte {tempo}, {chans.get('_flags', 0)}")

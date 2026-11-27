@@ -98,6 +98,15 @@ Her oyuna kendi müziği ve efekt seti yazılır:
 - Her oyunun WAV'ı dinlenip onaylanır.
 - Kartuş (`mkcart`) 128 KB'a sığar.
 
+**Gerçekleşen (Faz 3 sonu)**
+- Bütün oyunlar `k_tone` ve `k_sfx` yerine kendi `muzik.ses` dosyasını kullanıyor. Efektler çoğunlukla 2. kare kanalında ve gürültü kanalında çalıyor; böylece melodi kesilmiyor.
+- Boss'u olmayan Yıldız Muhafızı'nda "patron" teması yerine 5. dalgadan sonra çalan ikinci bir tema var.
+- Blok Yağmuru'nda tema seviyeyle hızlanıyor; yığın tepeye yaklaşınca "tehlike" sürümüne geçiyor.
+- Tılsım'da pazar müziği Hicaz makamında. Puan sayılırken çıkan ses her adımda bir perde yükseliyor (`ses_perde`).
+- Tılsım'ın müziği oyunun içine sığmadı. Kartuşta oyunun hemen ardına "ek veri" olarak konuyor ve açılışta `$B000`'a okunuyor (`game_c_ek.cfg`, `k_ek_yukle`).
+- Kartuşun 157 KB'ı dolu (256 KB'tan). Derleyici artık döngülü şarkılarda kanal uzunluklarının tutup tutmadığını denetliyor.
+- WAV'lar: `make -C sw ses-dinle` (v2 için `python3 tools/sesdinle.py <oyun> --v2`).
+
 ---
 
 ## Faz 4: Kristal Ocak'ın görsel temeli

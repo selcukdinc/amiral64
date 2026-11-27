@@ -8,6 +8,7 @@
 void __fastcall__ ses_muzik(const unsigned char *song);   /* start a song (from its beginning) */
 void ses_dur(void);                                       /* stop the music */
 void __fastcall__ ses_efekt(const unsigned char *sfx);    /* play a sound effect */
+void __fastcall__ ses_perde(signed char semitones);      /* the next ses_efekt plays this much higher */
 void __fastcall__ ses_hizlan(unsigned char extra);        /* tempo = the song's + extra (0: normal) */
 void __fastcall__ ses_sessiz(unsigned char mask);         /* music channels muted (bit n: channel n) */
 void __fastcall__ ses_ses(unsigned char vol);             /* music volume 0..15 (effects stay loud) */

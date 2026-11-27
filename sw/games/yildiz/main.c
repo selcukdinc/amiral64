@@ -3,6 +3,8 @@
  * The score line at the top stays still while the stars scroll (raster split). */
 #include "konsol.h"
 #include "art.h"
+#include "ses.h"
+#include "muzik.h"
 
 #define MAX_SHOTS 6
 #define MAX_EN 8
@@ -79,7 +81,7 @@ static void enemy_fire(unsigned char i) {
 
 static void ship_hit(void) {
     if (invuln) return;
-    k_sfx(SFX_BOOM);
+    ses_efekt(sfx_vuruldu);
     if (lives) --lives;
     invuln = 120;
     hud();
@@ -98,7 +100,7 @@ static void update(void) {
         for (i = 0; i < MAX_SHOTS; ++i)
             if (!shot_on[i]) {
                 shot_on[i] = 1; shot_x[i] = ship_x + 10; shot_y[i] = ship_y;
-                cooldown = 8; k_sfx(SFX_SHOOT); break;
+                cooldown = 8; ses_efekt(sfx_ates); break;
             }
     }
     if (invuln) --invuln;
@@ -129,10 +131,10 @@ static void update(void) {
                 if (--en_hp[i] == 0) {
                     score += en_type[i] == EN_MINE ? 50 : en_type[i] == EN_DART ? 30 : 20;
                     en_type[i] = EN_BOOM; en_t[i] = 0;
-                    k_sfx(SFX_BOOM);
+                    ses_efekt(sfx_patlama);
                     hud();
                 } else {
-                    k_sfx(SFX_BLIP);
+                    ses_efekt(sfx_isabet);
                 }
                 break;
             }
@@ -152,7 +154,11 @@ static void update(void) {
         spawn();
         spawn_timer = wave < 8 ? 70 - wave * 6 : 22;
     }
-    if (score >= wave * 200 && wave < 20) { ++wave; hud(); }
+    if (score >= wave * 200 && wave < 20) {
+        ++wave; hud();
+        if (wave == 5) ses_muzik(mus_dalga2);      /* the second theme from wave 5 on */
+        ses_efekt(sfx_dalga);
+    }
 }
 
 static void draw(void) {
@@ -186,6 +192,7 @@ static void title(void) {
     k_sprite(1, 64, 110, S_saucer, 8);
     k_sprite(2, 120, 110, S_dart, 8);
     k_sprite(3, 64, 126, S_mine, 8);
+    ses_muzik(mus_baslik);
     do k_wait_frame(); while (!((pad_new[0] | pad_new[1]) & (BTN_START | BTN_A)));
 }
 
@@ -209,12 +216,16 @@ void main(void) {
         for (i = 0; i < MAX_SHOTS; ++i) shot_on[i] = 0;
         for (i = 0; i < MAX_EB; ++i) eb_on[i] = 0;
         hud();
+        ses_muzik(mus_dalga1);
+        ses_efekt(sfx_basla);
         while (alive) {
             k_wait_frame();
             if (((pad[0] | pad[1]) & (BTN_SELECT | BTN_START)) == (BTN_SELECT | BTN_START)) k_menu();
             if ((pad_new[0] | pad_new[1]) & BTN_START) {
                 k_print(16, 1, "DURAKLADI", 1);
+                ses_ses(4);
                 do k_wait_frame(); while (!((pad_new[0] | pad_new[1]) & BTN_START));
+                ses_ses(15);
                 k_print(16, 1, "         ", 0);
             }
             bgx = (bgx + 1) & 511;
@@ -223,7 +234,7 @@ void main(void) {
             draw();
             ++starx;
         }
-        k_sfx(SFX_LOSE);
+        ses_muzik(mus_bitti);
         k_print(15, 1, "OYUN BITTI", 3);
         for (i = 0; i < 120; ++i) k_wait_frame();
     }

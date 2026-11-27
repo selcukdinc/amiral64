@@ -5,6 +5,8 @@
 #include "konsol.h"
 #include "bigtext.h"
 #include "art.h"
+#include "ses.h"
+#include "muzik.h"
 
 #define AW 15
 #define AH 11
@@ -168,7 +170,7 @@ static void place_bomb(unsigned char i) {
             grid[py[i]][px[i]] = BOMB;
             ++pbombs[i];
             draw_cell(px[i], py[i]);
-            k_sfx(SFX_TICK);
+            ses_efekt(sfx_fitil);
             return;
         }
 }
@@ -221,7 +223,7 @@ static void explode(unsigned char b) {
         }
         if (last && fshape[ly][lx] == mid) { fshape[ly][lx] = end; draw_cell(lx, ly); }
     }
-    k_sfx(SFX_BOOM);
+    ses_efekt(sfx_patlama);
 }
 
 static void players(void) {
@@ -253,7 +255,7 @@ static void players(void) {
                     if (g == P_SPEED && pspeed[i] < 3) ++pspeed[i];
                     grid[py[i]][px[i]] = FLOOR;
                     draw_cell(px[i], py[i]);
-                    k_sfx(SFX_PICKUP);
+                    ses_efekt(sfx_guc);
                 }
             }
         }
@@ -261,7 +263,7 @@ static void players(void) {
         cx = px[i]; cy = py[i];
         if (pstep[i] >= 8) { cx += pdx[i]; cy += pdy[i]; }
         if (flame[cy][cx]) {
-            palive[i] = 0; --alive_count; pdead_t[i] = 0; k_sfx(SFX_LOSE);
+            palive[i] = 0; --alive_count; pdead_t[i] = 0; ses_efekt(sfx_elendi);
         }
     }
 }
@@ -333,6 +335,7 @@ static void setup(void) {
     k_print(3, 27, "SANDIKLARI PATLAT, GUC TOPLA,", 0);
     k_print(3, 28, "SON AYAKTA KALAN TURU ALIR. 3 TUR!", 0);
     if (nplayers < 2) nplayers = 2;
+    ses_muzik(mus_tur);
     for (;;) {
         k_print(18, 17, "<", nplayers > 2 ? 3 : 0);
         k_print_num(19, 17, nplayers, 1, 1);
@@ -343,8 +346,8 @@ static void setup(void) {
             else k_sprite(i, 104 + i * 32, 92, S_ghost, PAL_P1 + i);
         }
         frame();
-        if ((pad_new[0] | pad_new[1]) & (BTN_UP | BTN_RIGHT) && nplayers < 4) { ++nplayers; k_sfx(SFX_BLIP); }
-        if ((pad_new[0] | pad_new[1]) & (BTN_DOWN | BTN_LEFT) && nplayers > 2) { --nplayers; k_sfx(SFX_BLIP); }
+        if ((pad_new[0] | pad_new[1]) & (BTN_UP | BTN_RIGHT) && nplayers < 4) { ++nplayers; ses_efekt(sfx_secim); }
+        if ((pad_new[0] | pad_new[1]) & (BTN_DOWN | BTN_LEFT) && nplayers > 2) { --nplayers; ses_efekt(sfx_secim); }
         if ((pad_new[0] | pad_new[1]) & (BTN_START | BTN_A)) break;
     }
     k_hide_sprites(0);
@@ -366,7 +369,7 @@ static void match_won(void) {
     big_reset();
     big_center(6, line);
     big_center(10, "KAZANDI");
-    k_sfx(SFX_WIN);
+    ses_muzik(mus_sampiyon);
     for (t = 0; t < 240; ++t) {
         k_sprite(0, 152, 120 + ((t >> 3) & 1 ? -4 : 0), (t >> 4) & 1 ? S_down1 : S_down0, PAL_P1 + winner);
         frame();
@@ -399,6 +402,7 @@ void main(void) {
         winner = 255;
         while (winner == 255) {
             new_round();
+            ses_muzik(mus_tur);
             while (alive_count > 1) {
                 frame();
                 if (((pad[0] | pad[1]) & (BTN_SELECT | BTN_START)) == (BTN_SELECT | BTN_START)) k_menu();
@@ -412,10 +416,10 @@ void main(void) {
                     ++pwins[i];
                     message(" . OYUNCU TURU ALDI", 1);
                     k_print_num(11, 27, i + 1, 1, 1);
-                    k_sfx(SFX_WIN);
+                    ses_muzik(mus_tur_sonu);
                     if (pwins[i] == 3) winner = i;
                 }
-            if (!alive_count) message("     BERABERE!", 1);
+            if (!alive_count) { message("     BERABERE!", 1); ses_dur(); }
             scores();
             for (t = 0; t < 90; ++t) { frame(); draw_players(); }
             message("", 0);

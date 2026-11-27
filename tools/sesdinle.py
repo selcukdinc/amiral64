@@ -68,6 +68,9 @@ def record(k, syms, cmd, idx, max_frames, song):
     k.wr(syms["_secim"], idx)
     k.wr(syms["_komut"], cmd)
     start = k.frames
+    # the registers set before the recording (master volume, channel mask, v2 settings and wave RAM) first
+    state = [(0, r, k.apu[r]) for r in [0x10, 0x11, 0x13] + list(range(0x18, 0x1F)) + list(range(0x20, 0x30))
+             if r < len(k.apu)]
     k.apu_log = []
     quiet = 0
     for f in range(max_frames):
@@ -81,7 +84,7 @@ def record(k, syms, cmd, idx, max_frames, song):
             if quiet > 20:
                 break
     n = k.frames - start
-    log = [(f - start, r, v) for f, r, v in k.apu_log]
+    log = state + [(f - start, r, v) for f, r, v in k.apu_log]
     k.wr(syms["_komut"], 3)
     for _ in range(3):
         k.frame()

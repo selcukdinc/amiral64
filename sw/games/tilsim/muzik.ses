@@ -1,0 +1,81 @@
+# Tilsim: title waltz, the route map, the gates (the guard's gate darker), the bazaar in the Hicaz mode,
+# gate opened and the charm broken. Effects on square 2 and the noise. This file goes to the cartridge's
+# extra data (EKDATA, read to $B000 at the start), so it does not take room from the game.
+include ../../lib/ortak.ses
+
+inst tink    v=10 7 5 3 2 1 0              d=0
+inst tok     v=11 8 5 3 1 0                a=0 1 2 3
+inst say     v=12 10 8 6 5 4 3 2 1 0       d=1
+
+# A minor waltz (3/4: 12 rows a bar)
+song baslik bpm=96 filtre=2
+  sq1: v11 @lead ~3,5 L o5 a4 >c4 e4 | d2 c8 <b8 | a4 g+4 b4 | a2. | >f4 a4 >c4 | <b2 a8 g+8 | a4 e4 c4 | <b2.
+  sq1:      a4 >c4 e4 | g2 f8 e8 | d4 f4 a4 | g+2. | a4 g+4 f4 | e2 d8 c8 | <b4 g+4 e4 | a2.
+  sq2: v6 @stab L o4 r4 c4 c4 | r4 f4 f4 | r4 g+4 g+4 | r4 c4 c4 | r4 a4 a4 | r4 g+4 g+4 | r4 c4 c4 | r4 g+4 g+4
+  sq2:              r4 c4 c4 | r4 e4 e4 | r4 f4 f4 | r4 g+4 g+4 | r4 a4 a4 | r4 c4 c4 | r4 g+4 g+4 | r4 c4 c4
+  tri: L @bassp o3 a2. d2. e2. a2. f2. e2. a2. e2. a2. c2. d2. e2. f2. a2. e2. a2.
+  wav: v8 L @wsine o4 e2. a2. b2. e2. c2. b2. e2. b2. e2. g2. a2. b2. >c2.< e2. b2. a2.
+end
+
+song harita bpm=76 filtre=3
+  sq1: v8 @pad L o5 e2 d2 | c2 <b2 | >c2 d2 | e1
+  tri: L @bass o3 a1 f1 d1 e1
+  wav: v8 L @wvox o4 c1 a1 f1 g+1
+end
+
+macro hats  @hat n1,8 n1 @snare n6 @hat n1
+song kapi bpm=112 filtre=1
+  sq1: v11 @lead25 ~2,6 L o5 l8 a >c e g f e d c | <b >d f a g f e d | c e g >c <b a g e | a4 e4 a4 r4
+  sq1:      a >c e g f e d c | <b >d f a g f e d | c <b a g f e d e | a2 r2
+  sq2: v6 L o4 @minarp a1 d1 @majarp c1 @minarp a1 a1 d1 @majarp f1 @minarp a1
+  tri: L @bassp o3 a4 >c4< e4 g4 d4 f4 a4 >c4< c4 e4 g4 e4 a4 e4 c4 e4
+  tri:          a4 >c4< e4 g4 <b4 >d4 f4 a4 f4 a4 >c4< a4 a4 e4 a4 r4
+  noi: v9 L [*hats]16
+end
+
+song bekci bpm=120 filtre=2
+  sq1: v10 @pluck12 L o4 [d8 d8 a-8 d8 >c8< d8 a-8 g8]2 [d8 d8 a-8 d8 >e-8 d8 c8< a-8]2
+  tri: L @bassst o2 [d8]16 [d8]8 [e-8]8
+  noi: v11 L [@noisek n12,4 @snare n6,4 @noisek n12,8 n12,8 @snare n6,4]4
+  wav: v8 L @wsaw o3 d1 d1 e-1 d1
+end
+
+# the bazaar: Hicaz on A (A Bb C# D E F G)
+song pazar bpm=126 filtre=1
+  sq1: v11 @lead25 ~2,7 L o5 l8 a b- >c+ d e4 d c+ | d e f e d c+ <b- a | a b- >c+ d e f g f | e d c+ <b- a2
+  sq1:      >e f g f e d c+ d | e4 d c+ <b- a b- >c+ | d c+ <b- a g a b- g | a2. r4
+  sq2: v6 L o4 @majarp a1 @minarp d1 @majarp a1 b-1 a1 @minarp g1 d1 @majarp a1
+  tri: L @bassp o2 [a8 r8 >a8< r8 a8 a8 >a8< r8]1 [d8 r8 >d8< r8 d8 d8 >d8< r8]1 [a8 r8 >a8< r8 a8 a8 >a8< r8]1
+  tri:          [b-8 r8 >b-8< r8 b-8 b-8 >b-8< r8]1 [a8 r8 >a8< r8 a8 a8 >a8< r8]1 [g8 r8 >g8< r8 g8 g8 >g8< r8]1
+  tri:          [d8 r8 >d8< r8 d8 d8 >d8< r8]1 [a8 r8 >a8< r8 a8 a8 >a8< r8]1
+  noi: v10 L [@noisek n12,8 @snare n5,16 n5,16 r8 @snare n5,8 @noisek n12,8 r8 @snare n5,8 @hat n1,8]8
+  wav: v8 L @worgan o4 c+1 d1 c+1 d1 c+1 b-1 a1 c+1
+end
+
+song zafer bpm=120 filtre=1
+  sq1: v12 @lead25 o5 a8 >c+8 e8 a2 r8
+  tri: @bass o3 a8 >c+8 e8 a2 r8
+  noi: r2 @crash n3,2
+  wav: v9 @worgan o4 e8 a8 >c+8 e2 r8
+end
+
+song bozuldu bpm=80
+  sq1: v11 @lead ~4,5 o5 e4 d+4 d4 c+4 | c1
+  tri: @bass o3 a1 | a1
+end
+
+sfx say pri=4
+  sq2: @say o6 c4
+end
+sfx sikke pri=3
+  sq2: @tink o7 e2 g4
+end
+sfx tok pri=4
+  noi: @tok n9,6
+end
+sfx carpan pri=5
+  sq2: @stab o5 a3 >e10
+end
+sfx al pri=5
+  sq2: @tink o6 e2 a2 >c+2 e6
+end

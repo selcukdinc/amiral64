@@ -1,0 +1,35 @@
+# Launcher: the opening jingle (with the sparks of the splash), the menu tune and its effects.
+include ../../lib/ortak.ses
+
+# the sparks fly in for 8 rows, the title flashes on the crash
+song acilis bpm=120 filtre=1
+  sq1: v12 @pluck o5 c16 e16 g16 >c16 e16 g16 >c8 @lead25 ~3,6 e2. r4
+  sq2: v9 r2 @swell o5 g2. r4
+  tri: r2 @bass o3 c2. r4
+  noi: r2 @crash n3,2. r4
+  wav: v11 r2 @wsine o4 c2. r4
+end
+
+macro mel1  l8 e a >c <b a4 e4 | f a >c d c4 <a4 | g >c e d c4 <g4 | b >d <b g a2
+macro mel2  l8 e a >c e d4 c4 | <a >c f e d4 c4 | e d c <b >c4 <g4 | b4. >d c2
+macro hats  @hat n1,8 n1 @ohat n2 @hat n1
+
+song menu bpm=100 filtre=1
+  sq1: v10 @lead ~2,7 L o5 *mel1 *mel2
+  sq2: v6 L o4 [@minarp a2 a2 @majarp f2 f2 @majarp c2 c2 @majarp g2 g2]2
+  tri: L o3 [@bassp a8 r8 a8 >a8< @bassp f8 r8 f8 >f8< @bassp c8 r8 c8 >c8< @bassp g8 r8 g8 >g8<]4
+  noi: v9 [r1]8 L [*hats]16
+  wav: v7 L o4 [@wvox c1 c1 e1 d1]2
+end
+
+sfx secim pri=3
+  sq1: @blip v11 o6 e2 a4
+end
+sfx basla pri=8
+  sq1: @stab o5 c3 e3 g3 >c3 e3 g12
+  tri: @bassst o4 c3 e3 g3 >c12
+  noi: r9 @crash n3,20
+end
+sfx yazi pri=2
+  sq2: @blip v5 o7 c1 r1
+end

@@ -25,7 +25,7 @@
 ; on an older APU the wave streams are followed but not heard.
 
         .export _ses_muzik, _ses_dur, _ses_efekt, _ses_hizlan, _ses_sessiz, _ses_ses, _ses_sondur
-        .export _ses_caliyor, _ses_surum, _ses_tick
+        .export _ses_caliyor, _ses_surum, _ses_tick, _ses_perde
         .export _ses_on, _ses_playing           ; (for the tests and tools/sesdinle.py)
         .import _k_nmi_hook, _k_nmi_hook_on
 
@@ -70,6 +70,7 @@ t_llo:  .res NTRK               ; loop start and count
 t_lhi:  .res NTRK
 t_lcnt: .res NTRK
 t_pri:  .res NTRK
+t_tr:   .res NTRK               ; transposition of an effect (ses_perde)
 t_outv: .res NTRK               ; this frame: volume, duty bits (wave number), period
 t_outd: .res NTRK
 t_perlo: .res NTRK
@@ -94,6 +95,9 @@ m_fade: .res 1
 m_fcnt: .res 1
 q_lo:   .res 4                  ; effects waiting to start
 q_hi:   .res 4
+q_tr:   .res 4
+m_ntr:  .res 1
+s_tr:   .res 1
 q_wr:   .res 1
 q_rd:   .res 1
 s_ver:  .res 1
@@ -152,10 +156,19 @@ _ses_efekt:
         sta q_lo,y
         txa
         sta q_hi,y
+        lda m_ntr
+        sta q_tr,y
+        lda #0
+        sta m_ntr
         iny
         tya
         and #3
         sta q_wr
+        rts
+
+; void __fastcall__ ses_perde(signed char semitones): the next ses_efekt plays this much higher
+_ses_perde:
+        sta m_ntr
         rts
 
 ; void __fastcall__ ses_hizlan(unsigned char extra): tempo = the song's + extra
@@ -258,6 +271,8 @@ _ses_tick:
         sta zp_q
         lda q_hi,x
         sta zp_q+1
+        lda q_tr,x
+        sta s_tr
         jsr sfx_start
         lda q_rd
         clc
@@ -413,6 +428,7 @@ track_reset:
         sta t_paclo,x
         sta t_pachi,x
         sta t_outv,x
+        sta t_tr,x
         lda #$FF
         sta t_bn,x
         lda #0
@@ -463,6 +479,8 @@ sfx_start:
         sta t_pri,x
         jsr header_tables
         jsr track_reset
+        lda s_tr
+        sta t_tr,x
         ldy s_y
         jmp @nx
 @skip:  iny
@@ -520,7 +538,12 @@ p_end:  lda #0
 ptab:   .word h_rest-1, row_done-1, h_inst-1, h_vol-1, h_vib-1, h_port-1, h_det-1, h_tempo-1
         .word h_call-1, h_ret-1, h_jump-1, h_lstart-1, h_lend-1, p_end-1
 
-h_note: sta t_note,x
+h_note: clc
+        adc t_tr,x
+        cmp #96
+        bcc @in
+        lda #95
+@in:    sta t_note,x
         lda #0
         sta t_rel,x
         sta t_paclo,x

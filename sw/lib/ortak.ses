@@ -16,6 +16,7 @@ inst minarp  v=11 10 9 9 | 8 / 6 4 2 0        a=| 0 0 3 3 7 7      d=1
 inst sus4arp v=11 10 9 9 | 8 / 6 4 2 0        a=| 0 0 5 5 7 7      d=1
 inst octarp  v=11 10 9 9 | 8 / 6 4 2 0        a=| 0 0 12 12        d=2
 inst blip    v=12 9 6 4 2 1 0                             d=1
+inst ping    v=13 12 11 10 9 8 7 6 5 4 3 2 2 1 1 0        d=1
 inst bend    v=10 12 11 10 | 10 / 7 4 2 0     p=6 4 3 2 1 1 0     d=2    # slides up into the note
 
 # ---- triangle

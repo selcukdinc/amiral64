@@ -1,0 +1,74 @@
+# Mahalle Olimpiyati: a march for the title and the scoreboards, a theme for each event, the champion's
+# fanfare and the effects (square 2 and noise; the melody stays on square 1).
+include ../../lib/ortak.ses
+
+inst tabanca v=15 14 12 10 8 6 4 3 2 1 0     a=0 1 2 3 4
+inst buzz    v=12 12 12 11 11 10 9 8 6 4 2 0     d=0
+inst whoosh  v=4 7 9 10 9 8 6 4 2 0         a=0 -1 -2 -3 -4 -5 -6 -7 -8 -9
+inst tik2    v=10 6 3 1 0                   d=2
+
+macro trampet  @snare n5,16 n5,16 @hat n1,8 @snare n5,8 @hat n1,8
+# C major march: C F G C | Am Dm G C
+song baslik bpm=116 filtre=1
+  sq1: v12 @lead25 ~2,6 L o5 c8. e16 g8. e16 >c4 <g4 | a8. >c16 f8. c16 <a4 f4 | g8. b16 >d8. <b16 g4 f4 | e4 g4 >c2
+  sq1:      <a8. >c16 e8. c16 <a4 e4 | f8. a16 >d8. <a16 f4 d4 | g8. f16 e8. d16 c4 <b4 | >c2 r2
+  sq2: v6 L o4 @majarp c1 f1 g1 c1 @minarp a1 d1 @majarp g1 c1
+  tri: L @bassp o3 [c8 g8]4 [f8 >c8<]4 [g8 >d8<]4 [c8 g8]4 [a8 >e8<]4 [d8 a8]4 [g8 >d8<]4 [c8 g8]4
+  noi: v11 L [*trampet]16
+  wav: v8 L @worgan o4 e1 a1 b1 g1 e1 f1 f1 e1
+end
+
+# 100 m: fast, sixteenths
+song kosu bpm=168 filtre=1
+  sq1: v12 @pluck L o5 [c16 e16 g16 e16 c16 e16 g16 >c16< g16 e16 c16 e16 g16 e16 >c16 e16<]2
+  sq1:              [d16 f16 a16 f16 d16 f16 a16 >d16< a16 f16 d16 f16 g16 b16 >d16 f16<]2
+  sq2: v8 @lead12 L o5 c2 e2 g2 e2 d2 f2 g2 b2
+  tri: L @bassst o3 [c8 >c8<]8 [d8 >d8<]4 [g8 >g8<]4
+  noi: v12 L [@noisek n12,8 @hat n1,8 @snare n5,8 @hat n1,8]8
+end
+
+# long jump: bouncy run-up
+song atlama bpm=138 filtre=1
+  sq1: v12 @lead25 L o5 l8 g >c e g e c <g >c | a f a >c <a f d f | g e g >c <b g d g | >c4 <g4 >c4 r4
+  sq2: v6 L o4 @majarp c1 f1 @majarp g1 c1
+  tri: L @bassp o3 c4 g4 c4 g4 f4 >c4< f4 >c4< g4 >d4< g4 >d4< c4 g4 c4 r4
+  noi: v10 L [@noisek n12,4 @hat n1,8 n1,8 @snare n5,4 @hat n1,4]4
+end
+
+# reflex: waiting, a quiet ticking pulse
+song refleks bpm=100 filtre=2
+  sq1: v6 @tik2 L o6 [c8 r8 r4 r4 c8 r8]4
+  tri: L @bass o2 [a1]4
+  wav: v6 L @wsine o4 e1 e1 f1 e1
+end
+
+song sampiyon bpm=112 filtre=1
+  sq1: v13 @lead25 ~3,6 o5 g8 g8 g8 >c4 <g8 >c8 e8 | g2 e4 r4 | d8 d8 d8 g4 f8 e8 d8 | c2. r4
+  sq2: v9 @lead o5 e8 e8 e8 e4 e8 g8 >c8 | e2 c4 r4 | <b8 b8 b8 >d4 d8 c8 <b8 | g2. r4
+  tri: @bass o3 c8 c8 c8 c4 c8 e8 g8 | >c2 <g4 r4 | g8 g8 g8 g4 g8 g8 g8 | c2. r4
+  noi: r1 r1 r1 @crash n3,2. r4
+  wav: v9 @worgan o4 c8 c8 c8 g4 g8 g8 g8 | >c2 <g4 r4 | f8 f8 f8 b4 b8 b8 b8 | >c2. r4
+end
+
+sfx geri pri=4
+  sq2: @blip v11 o5 a6
+end
+sfx kos pri=7
+  noi: @tabanca n4,16
+  sq2: @stab o6 c4 g8
+end
+sfx bitis pri=7
+  sq2: @ping o6 g4 >c4 e4 g12
+end
+sfx faul pri=7
+  sq2: @buzz o3 a+20
+end
+sfx sinyal pri=8
+  sq2: @stab o6 e3 a10
+end
+sfx atla pri=5
+  noi: @whoosh n4,10
+end
+sfx olcum pri=6
+  sq2: @ping o6 c3 e3 g3 >c10
+end

@@ -1,0 +1,71 @@
+# Blok Yagmuru: the theme (faster with the level), the danger version when the stack nears the top,
+# the game-over tune and the effects. Effects use square 2 and the noise channel, so the melody
+# (square 1) goes on while you play.
+include ../../lib/ortak.ses
+
+inst tok     v=11 7 4 2 0                   a=0 1 2
+inst gum     v=14 12 9 7 5 3 2 1 0          a=0 1 2 3 4 5
+macro davul  @noisek n12,8 @hat n1 @snare n6 @hat n1 @noisek n12 n12 @snare n6 @hat n1
+
+# D minor, 16 bars: A (Dm Dm Bb Bb Am C A A), B (Gm Dm F F Eb Eb A Dm)
+song tema bpm=144 filtre=1
+  sq1: v12 @lead25 ~2,6 L o5 l8 d f a >d c <a f a | g f e f d4 r a | b- >d f d c <b- a g | f4 g a b-4 a g
+  sq1:     a >c e c <a g e g | f e d e c4 r c | c+ e a e g f e d | c+4 e4 a4 r4
+  sq1:     g4. a b- a g f | a4. g f e d e | f4. g a b- >c d | c4 <a4 f4 r4
+  sq1:     e-4. f g f e- d | e- g b- >e- d4 c4 | c+ <b- a g f e d c+ | d2 r2
+  sq2: v7 L o4 @minarp d1 d1 o3 @majarp b-1 b-1 o4 @minarp a1 @majarp c1 o3 @majarp a1 a1
+  sq2:       o4 @minarp g1 d1 @majarp f1 f1 e-1 e-1 o3 a1 o4 @minarp d1
+  tri: L @bassp o3 [d8 >d8<]8 o2 [b-8 >b-8<]8 o3 [a8 >a8<]4 [c8 >c8<]4 [a8 >a8<]8
+  tri:          o3 [g8 >g8<]4 [d8 >d8<]4 [f8 >f8<]8 [e-8 >e-8<]8 [a8 >a8<]4 [d8 >d8<]4
+  noi: v12 L [*davul]16
+  wav: v9 L @wsine o4 f1 f1 d1 d1 c1 e1 c+1 e1 b-1 a1 a1 a1 g1 g1 e1 f1
+end
+
+# the stack is high: the same key, a tense 4-bar loop
+song tehlike bpm=160 filtre=1
+  sq1: v12 @pluck L o5 [a16 r16 a16 >d16< r16 a16 g16 f16 e16 r16 e16 a16 r16 g16 f16 e16]2
+  sq1:              [b-16 r16 b-16 >d16< r16 b-16 a16 g16 a16 r16 a16 >c+16< r16 b-16 a16 g16]2
+  sq2: v6 L o4 @minarp d1 d1 o3 @majarp b-1 a1
+  tri: L @bassst o3 [d16 d16 >d16< d16]8 o2 [b-16 b-16 >b-16< b-16]4 [a16 a16 >a16< a16]4
+  noi: v12 L [@noisek n12,8 @hat n1,16 n1,16 @snare n6,8 @hat n1,16 n1,16]8
+  wav: v8 L @wsaw o4 d2 e2 f2 e2 d2 c+2 d2 e2
+end
+
+song bitti bpm=96
+  sq1: v12 @lead ~3,6 o5 a8 f8 d8 <a8 b-4 a4 | a2. r4
+  sq2: v8 @lead o4 f4 d4 d4 c+4 | d2. r4
+  tri: @bass o3 d4 <b-4 g4 a4 | >d2. r4
+  noi: r1 @crash n5,2. r4
+end
+
+sfx kay pri=2
+  sq2: @blip v8 o6 c2
+end
+sfx don pri=3
+  sq2: @blip v9 o6 g2 >c3
+end
+sfx tut pri=3
+  sq2: @blip v9 o5 e2 a2 >e3
+end
+sfx kilit pri=3
+  noi: @tok n9,5
+end
+sfx dus pri=4
+  noi: @gum n11,9
+end
+sfx sil pri=6
+  sq2: @pluck v12 o6 c2 e2 g2 >c8
+end
+sfx dortlu pri=7
+  sq2: @stab o6 c3 e3 g3 >c3 e3 g10
+  noi: @crash n3,24
+end
+sfx seviye pri=8
+  sq2: @stab o5 g3 >c3 e3 g3 >c12
+end
+sfx basla pri=6
+  sq2: @stab o5 d4 a4 >d10
+end
+sfx duraklat pri=5
+  sq2: @blip v10 o5 a3 r2 e4
+end

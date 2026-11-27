@@ -11,6 +11,8 @@
 #include "bigtext.h"
 #include "art.h"
 #include "tables.h"
+#include "ses.h"
+#include "muzik.h"
 
 #define COLS 40
 #define VIEW_Y 2                /* first tile row of the view */
@@ -228,7 +230,7 @@ static unsigned char solid_at(unsigned x, unsigned y) {
     unsigned char *m = &map[((y >> 8) << 5) | (x >> 8)];
     if (*m == 4) {                      /* a door opens when something walks into it */
         *m = 0;
-        k_sfx(SFX_TICK);
+        ses_efekt(sfx_kapi);
         return 1;
     }
     return *m;
@@ -268,17 +270,17 @@ static void hurt(unsigned char d) {
     if (dead) return;
     hp = hp > d ? hp - d : 0;
     hurt_t = 12;
-    k_sfx(SFX_LOSE);
+    ses_efekt(sfx_hasar);
     if (!hp) dead = 1;
 }
 
 static void shoot(void) {
     unsigned char k, i, best = 255;
     int half;
-    if (!ammo) { k_sfx(SFX_TICK); hud_message("MERMI BITTI!", 3); return; }
+    if (!ammo) { ses_efekt(sfx_bos); hud_message("MERMI BITTI!", 3); return; }
     --ammo;
     fire_t = 14;
-    k_sfx(SFX_SHOOT);
+    ses_efekt(sfx_ates);
     for (k = 0; k < vis_n; ++k) {           /* nearest first: the first demon under the crosshair */
         i = vis_i[k];
         if (etype[i] != E_DEMON || estate[i] == S_DEAD) continue;
@@ -291,7 +293,7 @@ static void shoot(void) {
     if (ehp[best] > 1 + (k_rand() & 1)) { ehp[best] -= 1 + (k_rand() & 1); epain[best] = 10; }
     else {
         ehp[best] = 0; estate[best] = S_DEAD; eatk[best] = 0; ++kills;
-        k_sfx(SFX_BOOM);
+        ses_efekt(sfx_olum);
     }
 }
 
@@ -303,8 +305,8 @@ static void enemies(void) {
         d = adist(ex[i], ey[i], px, py);
         if (etype[i] != E_DEMON) {                       /* items */
             if (d < 0x90) {
-                if (etype[i] == E_MED && hp < 100) { hp = hp > 75 ? 100 : hp + 25; estate[i] = S_GONE; k_sfx(SFX_PICKUP); }
-                else if (etype[i] == E_AMMO) { ammo = ammo > 87 ? 99 : ammo + 12; estate[i] = S_GONE; k_sfx(SFX_PICKUP); }
+                if (etype[i] == E_MED && hp < 100) { hp = hp > 75 ? 100 : hp + 25; estate[i] = S_GONE; ses_efekt(sfx_toplama); }
+                else if (etype[i] == E_AMMO) { ammo = ammo > 87 ? 99 : ammo + 12; estate[i] = S_GONE; ses_efekt(sfx_toplama); }
                 else if (etype[i] == E_EXIT) won = 1;
             }
             continue;
@@ -428,6 +430,7 @@ static void wait_start(void) {
 static void title(void) {
     k_hide_sprites(0);
     k_clear_map();
+    ses_muzik(mus_baslik);
     big_reset();
     big_center(3, "KORIDOR 64");
     k_print(6, 7, "USSUN KORIDORLARINI GOLGELER", 0);
@@ -468,6 +471,7 @@ static unsigned char play(void) {
     k_clear_map();
     hud_static();
     hud_message(level == 1 ? "BOLUM 1: DEPO" : "BOLUM 2: REAKTOR", 1);
+    ses_muzik(level == 1 ? mus_depo : mus_reaktor);
     last = frame_count;
     for (;;) {
         n = frame_count - last;
@@ -484,9 +488,10 @@ static unsigned char play(void) {
         if ((pad_new[0] | pad_new[1]) & BTN_START) {
             paused = !paused;
             hud_message(paused ? "DURAKLADI" : "", 1);
+            ses_ses(paused ? 4 : 15);
         }
-        if (dead) { flash_palettes(1); k_sfx(SFX_LOSE); return 0; }
-        if (won) { k_sfx(SFX_WIN); return 1; }
+        if (dead) { flash_palettes(1); ses_ses(15); ses_muzik(mus_oldun); return 0; }
+        if (won) { ses_ses(15); ses_muzik(mus_zafer); return 1; }
     }
 }
 

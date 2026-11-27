@@ -6,6 +6,8 @@
  * or pass pad 1 around. */
 #include "konsol.h"
 #include "art.h"
+#include "ses.h"
+#include "muzik.h"
 
 #define TRACK_ROW 16
 unsigned char nplayers, event_no;
@@ -74,10 +76,11 @@ static void event_run(void) {
         turn_title("KOSU 100 M  SHIFT-CTRL SIRAYLA!");
         dist = 0; speed = 0; t = 0; last_btn = 0; runner_x = 8;
         runner(S_run1);
-        k_print(18, 2, "3", 3); k_sfx(SFX_TICK); wait_frames(40);
-        k_print(18, 2, "2", 3); k_sfx(SFX_TICK); wait_frames(40);
-        k_print(18, 2, "1", 3); k_sfx(SFX_TICK); wait_frames(40);
-        k_print(18, 2, "KOS!", 1); k_sfx(SFX_PICKUP);
+        ses_dur();
+        k_print(18, 2, "3", 3); ses_efekt(sfx_geri); wait_frames(40);
+        k_print(18, 2, "2", 3); ses_efekt(sfx_geri); wait_frames(40);
+        k_print(18, 2, "1", 3); ses_efekt(sfx_geri); wait_frames(40);
+        k_print(18, 2, "KOS!", 1); ses_efekt(sfx_kos); ses_muzik(mus_kosu);
         while (dist < 10000 && t < 3600) {
             k_wait_frame();
             ++t;
@@ -89,7 +92,8 @@ static void event_run(void) {
         }
         result[cur] = t;
         show_time(24, 2, t);
-        k_sfx(SFX_WIN);
+        ses_dur();
+        ses_efekt(sfx_bitis);
         wait_frames(90);
     }
 }
@@ -108,18 +112,20 @@ static void event_jump(void) {
             k_print(30, 2, "DENEME", 0);
             k_print_num(37, 2, tries + 1, 1, 0);
             speed = 0; last_btn = 0; runner_x = 8; jumped = 0; t = 0;
+            ses_muzik(mus_atlama);
             while (!jumped && runner_x < line_x + 8) {
                 k_wait_frame();
                 ++t;
                 mash();
                 runner_x += speed >> 5;
                 runner((t >> 3) & 1 ? S_run1 : S_run2);
-                if (pressed() & BTN_UP) jumped = 1;
+                if (pressed() & BTN_UP) { jumped = 1; ses_efekt(sfx_atla); }
             }
+            ses_dur();
             d = 0;
             if (!jumped || runner_x > line_x) {
                 k_print(18, 3, "FAUL!  ", 3);
-                k_sfx(SFX_LOSE);
+                ses_efekt(sfx_faul);
             } else {
                 /* jump length: speed, minus what was lost before the line */
                 d = (int)speed * 7 - (line_x - runner_x) * 4;
@@ -128,7 +134,7 @@ static void event_jump(void) {
                 for (t = 0; t < 30; ++t) { k_wait_frame(); runner_x += d / 120 + 1; runner(S_jump); }
                 k_print_num(18, 3, d, 4, 1);
                 k_print(22, 3, " CM", 1);
-                k_sfx(SFX_WIN);
+                ses_efekt(sfx_olcum);
             }
             if (d > best) best = d;
             wait_frames(80);
@@ -146,18 +152,21 @@ static void event_reflex(void) {
         k_print(14, 8, "HAZIR...", 0);
         wait = 60 + (k_rand() & 127) + (k_rand() & 63);
         early = 0;
+        ses_muzik(mus_refleks);
         while (wait--) {
             k_wait_frame();
             if (pressed() & BTN_A) { early = 1; break; }
         }
         if (early) {
             k_print(14, 8, "ERKEN! FAUL", 3);
-            k_sfx(SFX_LOSE);
+            ses_dur();
+            ses_efekt(sfx_faul);
             result[cur] = 999;
         } else {
             k_print(14, 8, "SIMDI!     ", 1);
             k_palette(0, &signal_col, 1);
-            k_sfx(SFX_PICKUP);
+            ses_dur();
+            ses_efekt(sfx_sinyal);
             t = 0;
             do { k_wait_frame(); ++t; } while (!(pressed() & BTN_A) && t < 250);
             k_palette(0, pal_saha, 1);
@@ -185,6 +194,7 @@ static void scoreboard(const char *title) {
     unsigned char i;
     k_hide_sprites(0);
     k_clear_map();
+    ses_muzik(mus_baslik);
     k_print(12, 4, title, 1);
     for (i = 0; i < nplayers; ++i) {
         k_print(10, 8 + 2 * i, "OYUNCU", 2);
@@ -214,13 +224,14 @@ void main(void) {
         k_print(6, 11, "SIRAYLA OYNANAN UC YARISMA.", 0);
         k_print(10, 16, "OYUNCU SAYISI:", 2);
         k_print(6, 21, "YUKARI/ASAGI SEC  SPACE/ENTER BASLA", 0);
+        ses_muzik(mus_baslik);
         cur = 0;
         for (;;) {
             k_print_num(25, 16, nplayers, 1, 1);
             k_wait_frame();
             if (((pad[0] | pad[1]) & (BTN_SELECT | BTN_START)) == (BTN_SELECT | BTN_START)) k_menu();
-            if ((pad_new[0] | pad_new[1]) & BTN_UP && nplayers < 4) ++nplayers;
-            if ((pad_new[0] | pad_new[1]) & BTN_DOWN && nplayers > 1) --nplayers;
+            if ((pad_new[0] | pad_new[1]) & BTN_UP && nplayers < 4) { ++nplayers; ses_efekt(sfx_geri); }
+            if ((pad_new[0] | pad_new[1]) & BTN_DOWN && nplayers > 1) { --nplayers; ses_efekt(sfx_geri); }
             if ((pad_new[0] | pad_new[1]) & (BTN_START | BTN_A)) break;
         }
         k_seed(0x0A11 + frame_count);
@@ -233,7 +244,7 @@ void main(void) {
         k_clear_map();
         k_print(11, 10, "SAMPIYON: OYUNCU", 1);
         k_print_num(28, 10, best + 1, 1, 1);
-        k_sfx(SFX_WIN);
+        ses_muzik(mus_sampiyon);
         event_no = 4;
         cur = 0;
         wait_a();

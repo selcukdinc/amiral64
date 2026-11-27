@@ -1,0 +1,63 @@
+# Yildiz Muhafizi: a spacey title, two wave themes (the second from wave 5 on), game over, effects.
+# The effects use square 2 and the noise channel; the melody stays on square 1.
+include ../../lib/ortak.ses
+
+inst lazer   v=13 12 10 8 6 4 2 0     p=0 2 3 4 5 6 7 8     d=0
+inst pat     v=15 14 13 11 9 8 7 6 5 4 3 2 1 0   a=0 1 2 3 4 5 6 7 8 9
+inst tink    v=9 6 3 1 0              d=1
+inst siren   v=10 10 9 9 8 8 7 6 5 4 3 2 1 0   p=0 -3 -3 -3 -3 3 3 3 3 -3 -3 -3 -3   d=2
+
+# E minor, floating: echoes and a slow pad
+song baslik bpm=84 filtre=2
+  sq1: v11 @swell ~3,5 L o5 e2 g4 b4 | a2. g8 f+8 | e2 d4 f+4 | e1
+  sq2: v5 @echo L r8 o5 e4 g8 r8 b4. | a4 r8 a4. g8 f+8 | e4 r8 e4 d8 f+4 | e2. r4
+  tri: L @bass o3 e1 c1 d1 <b1 >
+  wav: v10 L @wvox o4 b1 a1 a1 g1
+end
+
+macro kick8  @noisek n12,8 @hat n1 @snare n5 @hat n1
+song dalga1 bpm=132 filtre=1
+  sq1: v12 @lead25 ~2,6 L o5 l8 e g b >e d <b g a | b4 a g f+4 e4 | c e g >c <b g e g | f+2 d+2
+  sq1:      e g b >e f+ e d <b | >c4 <b a g4 f+4 | e g f+ e d+ f+ a >c | <b2 r2
+  sq2: v6 L o4 @minarp e1 @majarp c1 @majarp c1 @majarp b1 @minarp e1 @minarp a1 @majarp c1 @majarp b1
+  tri: L @bassp o3 [e8 e8 >e8< e8]2 [c8 c8 >c8< c8]2 [c8 c8 >c8< c8]2 <[b8 b8 >b8< b8]2>
+  tri:          [e8 e8 >e8< e8]2 [a8 a8 >a8< a8]2 [c8 c8 >c8< c8]2 <[b8 b8 >b8< b8]2>
+  noi: v11 L [*kick8]16
+  wav: v8 L @wsine o4 g1 g1 e1 f+1 g1 a1 g1 f+1
+end
+
+# from wave 5: the same key, driving sixteenths
+song dalga2 bpm=150 filtre=1
+  sq1: v12 @pluck L o5 [e16 b16 >e16< b16 g16 b16 >e16< b16]2 [c16 g16 >c16< g16 e16 g16 >c16< g16]2
+  sq1:              [a16 >e16 a16 e16 c16 e16 a16 e16<]2 [b16 >f+16 b16 f+16 d+16 f+16 b16 f+16<]2
+  sq2: v8 @lead12 ~2,7 L o5 e2 g2 | e2 c2 | a2 >c2< | b1
+  tri: L @bassst o3 [e16 e16 >e16< e16]4 [c16 c16 >c16< c16]4 <[a16 a16 >a16< a16]4 [b16 b16 >b16< b16]4>
+  noi: v12 L [@noisek n12,8 @hat n1,16 n1,16 @snare n5,8 @hat n1,16 @noisek n12,16]8
+  wav: v8 L @wsaw o4 b2 g2 e2 g2 a2 >c2< f+2 d+2
+end
+
+song bitti bpm=90
+  sq1: v12 @lead ~4,5 o5 b4 a4 g4 f+4 | e2. r4
+  tri: @bass o3 e4 d4 c4 <b4 | >e2. r4
+  wav: v9 @wsine o4 g2 f+2 | e2. r4
+end
+
+sfx ates pri=3
+  sq2: @lazer v11 o7 c6
+end
+sfx patlama pri=5
+  noi: @pat n7,16
+end
+sfx isabet pri=3
+  sq2: @tink o7 e2 c3
+end
+sfx vuruldu pri=8
+  noi: @pat n10,16
+  sq2: @siren o5 a20
+end
+sfx dalga pri=6
+  sq2: @stab o5 e3 b3 >e3 g3 b10
+end
+sfx basla pri=6
+  sq2: @stab o5 b4 >e4 g4 b10
+end
