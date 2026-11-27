@@ -23,6 +23,9 @@ def player(name, v2=False):
     k.apu_version = 2 if v2 else 1
     g = open(os.path.join(B, f"sesoyna_{name}.bin"), "rb").read()
     k.ram[0x400:0x400 + len(g)] = g
+    ek = os.path.join(B, f"sesoyna_{name}.bin.ek")
+    k.cart = bytearray(open(ek, "rb").read()) if os.path.exists(ek) else bytearray()   # as the loader leaves it
+    k.cart_addr = 0
     k.pc = 0x400
     syms = {}
     for l in open(os.path.join(B, f"sesoyna_{name}.lbl")):

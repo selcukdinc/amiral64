@@ -11,7 +11,8 @@
 ; The game talks to the engine through mailboxes (single-byte writes), so it never races the NMI.
 ;
 ; Data formats (made by tools/sesc.py):
-;   song:  tempo, flags, instrument table (word), wave table (word), 5 stream pointers (word, 0 = none)
+;   song:  tempo, flags (bits 1-0: the APU v2 output low-pass), instrument table (word), wave table (word),
+;          5 stream pointers (word, 0 = none)
 ;   sfx:   instrument table (word), wave table (word), n, then n x (channel, priority, stream (word))
 ;   instrument: 4 words: volume, arpeggio, pitch, duty sequences (0 = none)
 ;   sequence: length, loop (255 = none), release (255 = none), values...
@@ -340,6 +341,14 @@ song_start:
         sta m_tempo
         lda #$FF                ; the first row at once
         sta m_acc
+        lda s_ver               ; APU v2: the song's output filter
+        cmp #2
+        bne @nf
+        iny
+        lda (zp_q),y
+        and #3
+        sta APU+$13
+@nf:
         lda #0
         sta m_playing
         ldx #0

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """sesc: compiles the konsol's music and sound effects (MML text) for the sound engine (sw/lib/ses.s).
 
-    sesc.py music.ses out.s out.h [list]
+    sesc.py music.ses out.s out.h [list] [--segment NAME]
 
 Output: ca65 source with the data (exported _mus_NAME, _sfx_NAME, and the lists _<list>_muzikler,
-_<list>_efektler for the sound test; list defaults to "ses") and a C header declaring them.
+_<list>_efektler for the sound test; list defaults to "ses") and a C header declaring them. The data goes
+to RODATA, or to the segment NAME (EKDATA: the cartridge's extra data, see sw/game_c_ek.cfg).
 
 File format (one statement per line, # starts a comment):
 
@@ -15,7 +16,8 @@ File format (one statement per line, # starts a comment):
         n times, 'a..b' counts from a to b. The first instrument is the default one.
   wave NAME  32 values 0..15 (one cycle of the wave channel)
   macro NAME  MML               a phrase to call from songs (*NAME); it starts at o4 l8, its own state
-  song NAME  bpm=120 [grid=16]  (or tempo=raw: rows a frame x 256)
+  song NAME  bpm=120 [grid=16] [filtre=0..3]   (or tempo=raw: rows a frame x 256; filtre: the APU v2
+                                output low-pass, 1 = 15.5 kHz, 2 = 7.8 kHz, 3 = 3.9 kHz)
     sq1: MML                    channels sq1 sq2 tri noi wav; a channel can go on over many lines
   end
   sfx NAME  [pri=N]             a sound effect: like a song, but note lengths are in frames
@@ -81,7 +83,8 @@ def parse_values(toks):
 
 class Compiler:
     def __init__(self):
-        self.insts = {}           # name -> (index, {key: (vals, loop, rel)})
+        self.insts = {}           # name -> (definition order, {key: (vals, loop, rel)})
+        self.used = []            # instruments the streams use, in table order (the first defined one first)
         self.waves = {}           # name -> (index, 32 values)
         self.macros = {}          # name -> MML text
         self.songs = []           # (name, tempo, grid, {ch: text})
@@ -110,7 +113,7 @@ class Compiler:
                         cur = None
                         continue
                     m = re.match(r"(\w+)\s*:(.*)$", line)
-                    if not m or m.group(1) not in CHANNELS:
+                    if not m or m.group(1) not in CHANNELS or m.group(1) == "_flags":
                         raise Err(f"expected 'channel: MML' or 'end', got '{line}'")
                     cur.setdefault(m.group(1), []).append((m.group(2), ln))
                     continue
@@ -129,7 +132,7 @@ class Compiler:
                     opts = dict(w.split("=") for w in words[2:])
                     grid = int(opts.get("grid", 16))
                     tempo = int(opts["tempo"]) if "tempo" in opts else tempo_of(float(opts.get("bpm", 120)), grid)
-                    cur = {}
+                    cur = {"_flags": int(opts.get("filtre", 0)) & 3}
                     self.songs.append((words[1], tempo, grid, cur))
                 elif kw == "sfx":
                     opts = dict(w.split("=") for w in words[2:])
@@ -166,6 +169,16 @@ class Compiler:
         self.insts[name] = (len(self.insts), out)
 
     # ------------------------------------------------------------ MML
+    def use_inst(self, name):
+        """index of an instrument in the output table (only the instruments used are written)"""
+        if not self.used:
+            self.used.append(min(self.insts, key=lambda n: self.insts[n][0]))   # the default, index 0
+        if name not in self.used:
+            self.used.append(name)
+        if len(self.used) > 127:
+            raise Err("more than 127 instruments")
+        return self.used.index(name)
+
     def label(self, base):
         self.nlab += 1
         return f"L{self.nlab}_{base}"
@@ -277,7 +290,7 @@ class Compiler:
                 i += len(m.group(0))
                 if m.group(1) not in self.insts:
                     raise Err(f"{ctx}: no instrument '{m.group(1)}'")
-                items += [EV_INST, self.insts[m.group(1)][0]]
+                items += [EV_INST, self.use_inst(m.group(1))]
             elif c == "v":
                 i += 1
                 v = num()
@@ -424,39 +437,13 @@ class Compiler:
         return total
 
     # ------------------------------------------------------------ output
-    def write(self, src, out_s, out_h, lst="ses"):
+    def write(self, src, out_s, out_h, lst="ses", segment=None):
         if not self.insts:
             self.insts["_flat"] = (0, {})
         exp = []
         body = []
-        # instruments
-        body.append("ses_itab:")
-        names = sorted(self.insts, key=lambda n: self.insts[n][0])
-        body.append("        .word " + ", ".join(f"ses_i_{n}" for n in names))
-        for n in names:
-            seqs = self.insts[n][1]
-            if "w" in seqs:
-                if seqs["w"] not in self.waves:
-                    raise Err(f"instrument {n}: no wave '{seqs['w']}'")
-                seqs["d"] = ([self.waves[seqs["w"]][0]], 255, 255)
-            ptrs = [f"ses_i_{n}_{k}" if k in seqs else "0" for k in "vapd"]
-            body.append(f"ses_i_{n}: .word " + ", ".join(ptrs))
-            for k in "vapd":
-                if k in seqs:
-                    vals, loop, rel = seqs[k]
-                    if k == "v" and not all(0 <= v <= 15 for v in vals):
-                        raise Err(f"instrument {n}: volume 0..15")
-                    body.append(f"ses_i_{n}_{k}: .byte {len(vals)}, {loop}, {rel}, " + ", ".join(str(v & 255) for v in vals))
-        # waves
-        if self.waves:
-            body.append("ses_wtab:")
-            for n, (idx, vals) in sorted(self.waves.items(), key=lambda kv: kv[1][0]):
-                packed = [vals[2 * j] << 4 | vals[2 * j + 1] for j in range(16)]
-                body.append("        .byte " + ", ".join(str(b) for b in packed) + f"   ; {n}")
-            wtab = "ses_wtab"
-        else:
-            wtab = "0"
-        # songs
+        # songs (wave table address: a label, filled in below)
+        wtab = "ses_wtab"
         self.lengths = {}
         for name, tempo, grid, chans in self.songs:
             labs = []
@@ -465,7 +452,7 @@ class Compiler:
             rows = max(self.rows(next(b[1] for b in self.blobs if b[0] == lab)) for lab in labs if lab != "0")
             self.lengths[name] = (rows * 256 + tempo - 1) // tempo
             exp.append(f"_mus_{name}")
-            body.append(f"_mus_{name}: .byte {tempo}, 0")
+            body.append(f"_mus_{name}: .byte {tempo}, {chans.get('_flags', 0)}")
             body.append(f"        .word ses_itab, {wtab}, " + ", ".join(labs))
         for name, pri, chans in self.sfx:
             parts = [(CHANNELS.index(ch), self.stream(name, ch, chans[ch], 1, True, False)) for ch in CHANNELS if ch in chans]
@@ -475,6 +462,41 @@ class Compiler:
             for chn, lab in parts:
                 body.append(f"        .byte {chn}, {pri}")
                 body.append(f"        .word {lab}")
+        # instruments
+        wused = []
+        ibody = body
+        body = []
+        body.append("ses_itab:")
+        if not self.used:
+            self.use_inst(min(self.insts, key=lambda n: self.insts[n][0]))
+        names = self.used
+        body.append("        .word " + ", ".join(f"ses_i_{n}" for n in names))
+        for n in names:
+            seqs = self.insts[n][1]
+            if "w" in seqs:
+                if seqs["w"] not in self.waves:
+                    raise Err(f"instrument {n}: no wave '{seqs['w']}'")
+                if seqs["w"] not in wused:
+                    wused.append(seqs["w"])
+                seqs["d"] = ([wused.index(seqs["w"])], 255, 255)
+            ptrs = [f"ses_i_{n}_{k}" if k in seqs else "0" for k in "vapd"]
+            body.append(f"ses_i_{n}: .word " + ", ".join(ptrs))
+            for k in "vapd":
+                if k in seqs:
+                    vals, loop, rel = seqs[k]
+                    if k == "v" and not all(0 <= v <= 15 for v in vals):
+                        raise Err(f"instrument {n}: volume 0..15")
+                    body.append(f"ses_i_{n}_{k}: .byte {len(vals)}, {loop}, {rel}, " + ", ".join(str(v & 255) for v in vals))
+        # waves
+        if wused:
+            body.append("ses_wtab:")
+            for n in wused:
+                vals = self.waves[n][1]
+                packed = [vals[2 * j] << 4 | vals[2 * j + 1] for j in range(16)]
+                body.append("        .byte " + ", ".join(str(b) for b in packed) + f"   ; {n}")
+        body = body + ibody
+        if not wused:
+            body.append("ses_wtab = 0")
         # streams
         for blob in self.blobs:
             lab, items = blob[0], blob[1]
@@ -506,7 +528,8 @@ class Compiler:
         body.append(f"_{lst}_efektler: .word " + ", ".join([f"_sfx_{n}" for n, *_ in self.sfx] + ["0"]))
         with open(out_s, "w") as f:
             f.write(f"; generated by tools/sesc.py from {src}; edit the .ses file\n")
-            f.write("        .export " + ", ".join(exp) + "\n        .rodata\n")
+            f.write("        .export " + ", ".join(exp) + "\n")
+            f.write(f'        .segment "{segment}"\n' if segment else "        .rodata\n")
             f.write("\n".join(body) + "\n")
         with open(out_h, "w") as f:
             g = re.sub(r"\W", "_", os.path.basename(out_h)).upper()
@@ -521,12 +544,18 @@ class Compiler:
 
 
 def main():
-    if len(sys.argv) not in (4, 5):
+    args = sys.argv[1:]
+    segment = None
+    if "--segment" in args:
+        i = args.index("--segment")
+        segment = args[i + 1]
+        del args[i:i + 2]
+    if len(args) not in (3, 4):
         sys.exit(__doc__)
     c = Compiler()
     try:
-        c.read(sys.argv[1])
-        c.write(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4] if len(sys.argv) == 5 else "ses")
+        c.read(args[0])
+        c.write(args[0], args[1], args[2], args[3] if len(args) == 4 else "ses", segment)
     except Err as e:
         sys.exit(f"sesc: {e}")
 

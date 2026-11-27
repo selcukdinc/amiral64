@@ -325,6 +325,8 @@ def load_low(name):
     k = Konsol(rom("boot.bin"))
     g = rom(f"game_{name}.bin")
     k.ram[0x400:0x400 + len(g)] = g
+    if os.path.exists(os.path.join(B, f"game_{name}.bin.ek")):      # extra data: where the loader leaves the port
+        k.cart = bytearray(rom(f"game_{name}.bin.ek")); k.cart_addr = 0
     k.pc = 0x400
     syms = {}
     for l in open(os.path.join(B, f"game_{name}.lbl")):
@@ -500,10 +502,33 @@ check("APU model: triangle P=48 at 996.5 Hz", abs(f - 996.5) < 4, f"{f:.1f} Hz")
 _, rms = tone_stats([(0, r, v) for r, v in [(0x10, 15), (0x11, 15), (12, 20), (13, 0), (14, 0x0F), (15, 0)]], 30)
 check("APU model: noise is heard", rms > 0.02, f"rms {rms:.3f}")
 
-def load_player(name):
+# APU v2 in the model, with the numbers tb_apu checks in VHDL
+def model_v2(writes, ticks=0, frames=10):
+    a = APU(2)
+    for r, v in writes:
+        if r == "tick": a.frame_tick()
+        else: a.write(r, v)
+    for _ in range(ticks): a.frame_tick()
+    return float(np.concatenate([a.render(735) for _ in range(frames)]).mean())
+base = [(0x10, 15), (0x11, 0x1F)]
+m = model_v2(base + [(0x20 + i, 0xFF) for i in range(8)] + [(0x14, 48), (0x15, 0), (0x16, 15), (0x17, 0)])
+check("APU v2 model: wave channel level (tb_apu: 112..124)", 112 < m < 124, f"{m:.1f}")
+m = model_v2(base + [(0x1A, 0x20), (0, 194), (1, 0), (2, 0x2C), (3, 0)], ticks=4, frames=2)
+check("APU v2 model: attack after 4 frames (tb_apu: 12..22)", 12 < m < 22, f"{m:.1f}")
+m = model_v2(base + [(0x1A, 0x06), (0, 194), (1, 0), (2, 0xAF), (3, 0)], ticks=20, frames=2)
+check("APU v2 model: decay stops at the sustain volume (tb_apu: 45..56)", 45 < m < 56, f"{m:.1f}")
+a = APU(2)
+for r, v in base + [(4, 200), (5, 0), (6, 0x2F), (7, 0), (0x19, 0x8B)]: a.write(r, v)
+a.frame_tick()
+check("APU v2 model: sweep 200 -> 175", a.period[1] == 175, a.period[1])
+
+def load_player(name, ver=2):
     k = Konsol(rom("boot.bin"))
+    k.apu_version = ver
     g = rom(f"sesoyna_{name}.bin")
     k.ram[0x400:0x400 + len(g)] = g
+    if os.path.exists(os.path.join(B, f"sesoyna_{name}.bin.ek")):
+        k.cart = bytearray(rom(f"sesoyna_{name}.bin.ek")); k.cart_addr = 0
     k.pc = 0x400
     syms = {}
     for l in open(os.path.join(B, f"sesoyna_{name}.lbl")):
@@ -531,7 +556,7 @@ def channel_notes(log, ch, frames, tri=False):
         if not vol and out and out[-1] is not None: out.append(None)
     return [n for n in out if n]
 
-k, S = load_player("deneme")
+k, S = load_player("deneme", 1)
 cyc = {"in": False, "n": 0, "sum": 0, "max": 0}
 tick, step0 = S["_ses_tick"], k.step
 def timed_step():
@@ -574,6 +599,29 @@ run(k, 700)
 check("ses: the song loops back (L)", k.rd(S["_ses_playing"]) == 1)
 k.wr(S["_komut"], 3); run(k, 3)
 check("ses: stop", k.rd(S["_ses_playing"]) == 0 and not any(k.rd(S["_ses_on"] + i) for i in range(5)))
+# APU v2: the wave channel plays (its wave RAM loaded from the instrument's wave)
+k, S = load_player("deneme", 2)
+check("ses: APU v2 detected", k.rd(S["_surum"]) == 2)
+k.wr(S["_secim"], 0); k.wr(S["_komut"], 1)
+k.apu_log = []
+f0 = k.frames
+run(k, 200)
+log = [(f - f0, r, v) for f, r, v in k.apu_log]
+vox = [8, 13, 15, 14, 10, 6, 5, 7, 11, 12, 10, 6, 3, 2, 4, 7, 8, 8, 6, 3, 1, 1, 3, 6, 8, 9, 7, 4, 2, 2, 4, 6]
+check("ses: v2 wave RAM holds the 'vox' wave", list(k.apu[0x20:0x30]) == [vox[2 * i] << 4 | vox[2 * i + 1] for i in range(16)],
+      list(k.apu[0x20:0x30]))
+wv = []
+per, vol = 0, 0
+for f, r, v in log:
+    if r == 0x14: per = (per & 0xF00) | v
+    elif r == 0x15: per = (per & 0xFF) | (v & 15) << 8
+    elif r == 0x16: vol = v & 15
+    if r == 0x16 and vol:
+        n = note_of(per, tri=True)
+        if not wv or wv[-1] != n: wv.append(n)
+check("ses: v2 wave channel plays its part (E4 F4 ...)", wv[:2] == ["E4", "F4"], wv[:6])
+check("ses: v2 channel mask has the wave channel", (0x11, 0x1F) in [(r, v) for f, r, v in k.apu_log] or k.apu[0x11] == 0x1F)
+
 # the library's effects through k_sfx (the old SFX_ ids)
 k, S = load_player("std")
 for i in range(8):

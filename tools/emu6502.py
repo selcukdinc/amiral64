@@ -41,8 +41,9 @@ class Konsol:
         self.disp = bytearray(10)
         self.uart_out = bytearray()
         self.uart_in = []
-        self.apu = bytearray(18)
+        self.apu = bytearray(48)
         self.apu_log = []
+        self.apu_version = 2          # APU v2 (hw/apu.vhd): version byte $A2 at $8112; 1 = the first APU
         self.cart_addr = 0
         self.test = None
         self.test_log = []
@@ -85,7 +86,10 @@ class Konsol:
             if r == 9: return min(self.line, 255)
             if r == 10: return self.raster
             return 0
-        if page == 1: return 0
+        if page == 1:
+            r &= 63
+            if r in (0x12, 0x13) and self.apu_version >= 2: return 0xA2
+            return 0
         if page == 2:
             r &= 63
             if r < 4:
@@ -158,8 +162,8 @@ class Konsol:
                 self.dma_cycles += 65
             elif r == 10: self.raster = v
         elif page == 1:
-            r &= 31
-            if r < 18:
+            r &= 63
+            if r < 48 and (self.apu_version >= 2 or r < 18):
                 self.apu[r] = v
                 self.apu_log.append((self.frames, r, v))
         elif page == 3:

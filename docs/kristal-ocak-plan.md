@@ -67,6 +67,13 @@ Her faz kendi başına derlenir ve testleri geçer. Her faz ayrı bir commit olu
 - Vivado sentezinde zamanlama tutar.
 - Kartta dinleme testi: eski oyunlar ve yeni motor çalışır.
 
+**Gerçekleşen (Faz 2 sonu)**
+- Kayıt haritası: `$8112` sürüm (`$A2`), `$8113` çıkış filtresi, `$8114–$8117` wave kanalı, `$8118–$8119` kare kanalların sweep'i, `$811A–$811E` attack/sustain, `$8120–$812F` wave RAM. APU adres yolu 5'ten 6 bite çıktı.
+- 2. dereceden delta-sigma yerine tek kutuplu bir alçak geçiren filtre (seçilebilir: kapalı / 15,5 / 7,8 / 3,9 kHz) yapıldı. Gerekçe: 25 MHz'de çalışan 1. dereceden modülatörün gürültüsü zaten duyulan bandın çok üstünde. Kare dalgaların sertliğini ise bu filtre yumuşatıyor. Şarkı `filtre=N` ile seçiyor.
+- Karışım `(toplam × ana ses) × 1,125` olarak kaldı, en çok 1023'te kesiliyor. Böylece v1 oyunlarının ses düzeyi değişmiyor.
+- Ses motoru donanım ADSR'sini kullanmıyor: zarfları zaten her karede yazılımla yazıyor. Donanım zarfı ve sweep, `k_tone` ile doğrudan ses çalan kodlar (launcher, boot ROM) için duruyor.
+- Kartta dinleme testi bu oturumda yapılamadı; FPGA kartı gerekiyor.
+
 ---
 
 ## Faz 3: Bütün oyunların yeni ses motoruna geçişi

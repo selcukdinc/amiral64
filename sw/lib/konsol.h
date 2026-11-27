@@ -85,6 +85,7 @@ void k_sfx(unsigned char id);
 void k_sound_off(void);
 void k_seg_number(unsigned n);             /* decimal on the 7-segment display */
 void k_menu(void);                         /* back to the boot ROM menu */
+void k_ek_yukle(void);                     /* extra data from the cartridge (game_c_ek.cfg, lib/ek.c) */
 
 /* sound effects for k_sfx */
 #define SFX_BLIP    0

@@ -190,7 +190,7 @@ begin
               ps2_clk => ps2_clk, ps2_data => ps2_data, nes_latch => nes_latch, nes_clk => nes_clk, nes_data => nes_data);
 
   sound : entity work.apu
-    port map (clk => clk, rst => rst, frame_tick => frame_tick, we => io_we(IO_APU), addr => a(4 downto 0),
+    port map (clk => clk, rst => rst, frame_tick => frame_tick, we => io_we(IO_APU), addr => a(5 downto 0),
               wdata => cpu_do, rdata => apu_q, level => open, aud_pwm => aud_pwm, aud_sd => aud_sd, pwm_bit => open);
 
   -- UART page: $8500 data (write = send, read = next received byte), $8501 bit0 received, bit1 sending, bit2 overrun

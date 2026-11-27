@@ -1,5 +1,6 @@
 # 6502 software of the retro konsol (cc65). `make` builds build/*.mem for the hardware; `make test` runs
 .DEFAULT_GOAL := all
+.SECONDEXPANSION:
 # the software tests.
 CA65 ?= ca65
 LD65 ?= ld65
@@ -33,14 +34,14 @@ $(addprefix $(B)/,$(addsuffix /art.h,$(RLE_GAMES))): $(B)/%/art.h: games/%/art.t
 $(B)/%/art.h: games/%/art.txt ../tools/gfx.py
 	mkdir -p $(dir $@)
 	python3 ../tools/gfx.py $< $@
-$(B)/%/main.o: games/%/main.c lib/konsol.h lib/ses.h $(B)/%/art.h $(B)/font.h
+$(B)/%/main.o: games/%/main.c lib/konsol.h lib/ses.h $(B)/%/art.h $(B)/font.h $$(if $$(wildcard games/$$*/muzik.ses),$(B)/$$*/muzik.h)
 	$(CC65) -O -t none -I lib -I games/$* -I $(B)/$* -I $(B) -o $(B)/$*/main.s $<
 	$(CA65) -o $@ $(B)/$*/main.s
 # music and sound effects of a game: games/<name>/muzik.ses (MML, tools/sesc.py) -> muzik.h + muzik.o
 SESC = python3 ../tools/sesc.py
 $(B)/%/muzik.h $(B)/%/muzik.s: games/%/muzik.ses lib/ortak.ses ../tools/sesc.py
 	mkdir -p $(dir $@)
-	$(SESC) $< $(B)/$*/muzik.s $(B)/$*/muzik.h
+	$(SESC) $< $(B)/$*/muzik.s $(B)/$*/muzik.h $(if $(filter $*,$(EK_GAMES)),--segment EKDATA)
 $(B)/%/muzik.o: $(B)/%/muzik.s
 	$(CA65) -o $@ $<
 # optional library parts (linked only into the games that use them)
@@ -60,21 +61,25 @@ $(B)/ses_std.o: $(B)/ses_std.s
 $(B)/ksfx.o: lib/ksfx.c lib/konsol.h lib/ses.h $(B)/ses_std.h | $(B)
 	$(CC65) -O -t none -I lib -I $(B) -o $(B)/ksfx.s $<
 	$(CA65) -o $@ $(B)/ksfx.s
-$(B)/konsolx.lib: $(B)/bigtext.o $(B)/vunpack.o $(B)/ses.o $(B)/ses_std.o $(B)/ksfx.o
+$(B)/ek.o: lib/ek.c lib/konsol.h | $(B)
+	$(CC65) -O -t none -I lib -o $(B)/ek.s $<
+	$(CA65) -o $@ $(B)/ek.s
+$(B)/konsolx.lib: $(B)/bigtext.o $(B)/vunpack.o $(B)/ses.o $(B)/ses_std.o $(B)/ksfx.o $(B)/ek.o
 	rm -f $@; ar65 a $@ $^
 # games bigger than 20 KB load at $0400 instead of $9000 (game_c_low.cfg; the cartridge entry says where)
 LOW_GAMES = tilsim koridor
+# games whose music goes to the cartridge's extra data (game_c_ek.cfg: read in by k_ek_yukle at $B000)
+EK_GAMES = tilsim
+GAME_CFG = $(if $(filter $(1),$(EK_GAMES)),game_c_ek.cfg,$(if $(filter $(1),$(LOW_GAMES)),game_c_low.cfg,game_c.cfg))
 # extra assembly parts of a game: sw/games/<name>/*.s
 $(B)/koridor/%.o: games/koridor/%.s | $(B)
 	mkdir -p $(dir $@)
 	$(CA65) -o $@ $<
 GAME_ASM_koridor = $(B)/koridor/blit.o $(B)/koridor/render.o $(B)/koridor/tables.o
 $(B)/koridor/main.o: games/koridor/tables.h
-.SECONDEXPANSION:
 GAME_SES = $(if $(wildcard games/$(1)/muzik.ses),$(B)/$(1)/muzik.o)
-$(B)/%/main.o: $$(if $$(wildcard games/$$*/muzik.ses),$(B)/$$*/muzik.h)
-$(B)/game_%.bin: $(B)/%/main.o $$(GAME_ASM_$$*) $$(call GAME_SES,$$*) $(LIBOBJ) $(B)/konsolx.lib game_c.cfg game_c_low.cfg
-	$(LD65) -C $(if $(filter $*,$(LOW_GAMES)),game_c_low.cfg,game_c.cfg) -o $@ -Ln $(B)/game_$*.lbl -m $(B)/game_$*.map $(LIBOBJ) $< $(GAME_ASM_$*) $(call GAME_SES,$*) $(B)/konsolx.lib $(NONELIB)
+$(B)/game_%.bin: $(B)/%/main.o $$(GAME_ASM_$$*) $$(call GAME_SES,$$*) $(LIBOBJ) $(B)/konsolx.lib game_c.cfg game_c_low.cfg game_c_ek.cfg
+	$(LD65) -C $(call GAME_CFG,$*) -o $@ -Ln $(B)/game_$*.lbl -m $(B)/game_$*.map $(LIBOBJ) $< $(GAME_ASM_$*) $(call GAME_SES,$*) $(B)/konsolx.lib $(NONELIB)
 
 # sound test player (tools/sesdinle.py): plays the songs and effects of one music file;
 # build/sesoyna_<name>.bin for games/<name>/muzik.ses, sesoyna_std for the library, sesoyna_deneme for tests
@@ -88,8 +93,8 @@ $(B)/deneme/muzik.h $(B)/deneme/muzik.s: tests/deneme.ses lib/ortak.ses ../tools
 $(B)/std/muzik.h $(B)/std/muzik.s: lib/ses_std.ses ../tools/sesc.py
 	mkdir -p $(dir $@)
 	$(SESC) $< $(B)/std/muzik.s $(B)/std/muzik.h
-$(B)/sesoyna_%.bin: $(B)/sesoyna/main.o $(B)/%/muzik.o $(LIBOBJ) $(B)/konsolx.lib game_c_low.cfg
-	$(LD65) -C game_c_low.cfg -o $@ -Ln $(B)/sesoyna_$*.lbl $(LIBOBJ) $< $(B)/$*/muzik.o $(B)/konsolx.lib $(NONELIB)
+$(B)/sesoyna_%.bin: $(B)/sesoyna/main.o $(B)/%/muzik.o $(LIBOBJ) $(B)/konsolx.lib game_c_ek.cfg
+	$(LD65) -C game_c_ek.cfg -o $@ -Ln $(B)/sesoyna_$*.lbl $(LIBOBJ) $< $(B)/$*/muzik.o $(B)/konsolx.lib $(NONELIB)
 SES_NAMES = std deneme $(patsubst games/%/muzik.ses,%,$(wildcard games/*/muzik.ses))
 ses-dinle: $(foreach n,$(SES_NAMES),$(B)/sesoyna_$(n).bin)
 	python3 ../tools/sesdinle.py $(SES_NAMES)
