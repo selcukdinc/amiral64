@@ -67,6 +67,7 @@ unsigned char k_key(unsigned char code);   /* a keyboard key is down (PS/2 code,
 void k_vaddr(unsigned addr);
 void k_vfill(unsigned addr, unsigned char v, unsigned len);
 void k_vcopy(unsigned addr, const unsigned char *src, unsigned len);
+void k_vunpack(unsigned addr, const unsigned char *src);   /* run-length packed data (tools/gfx.py --rle) */
 void k_tile(unsigned char x, unsigned char y, unsigned char tile, unsigned char attr);
 void k_fill_tiles(unsigned char x, unsigned char y, unsigned char w, unsigned char h, unsigned char tile, unsigned char attr);
 void k_print(unsigned char x, unsigned char y, const char *s, unsigned char pal);

@@ -5,17 +5,17 @@
 
 A name starting with '*' marks the launcher (flags bit0): the boot ROM starts it instead of its own menu.
 icon: a number the launcher uses for the game's picture (0 = generic).
-load: load address in hex (default 9000: up to 20 KB; 0400: up to 30 KB, see sw/game_c_low.cfg).
+load: load address in hex (default 9000: up to 20 KB; 0400: up to 31 KB, see sw/game_c_low.cfg).
 
 Layout: 16-byte header ("K65C", game count, version 1), 8 directory entries of 32 bytes
 (name 20 bytes, offset 3, size 2, load address 2, min players, max players, flags, icon, 0), games from $0200.
-The image is padded with $FF to 128 KB (the BRAM cartridge, 32 x 4 KB banks written as
+The image is padded with $FF to 256 KB (the BRAM cartridge, 64 x 4 KB banks written as
 <out>_00.mem ...; the same bytes go to the QSPI flash).
 """
 import sys, os
 
-SIZE = 128 * 1024         # BRAM cartridge: 32 banks of 4 KB
-GAME_MAX = {0x9000: 0x5000, 0x0400: 0x7800}
+SIZE = 256 * 1024         # BRAM cartridge: 64 banks of 4 KB
+GAME_MAX = {0x9000: 0x5000, 0x0400: 0x7C00}
 
 def build(games):
     img = bytearray(b"\xff" * SIZE)

@@ -41,6 +41,11 @@ Her faz kendi başına derlenir ve testleri geçer. Her faz ayrı bir commit olu
 - Motor yaklaşık 2,5 KB ROM ve 64 bayttan az RAM kullanır.
 - Birim testi: Python modeli ile `tb_apu` aynı örnekleri verir.
 
+**Gerçekleşen (Faz 1 sonu)**
+- Motor 2060 bayt kod + 338 bayt tablo, 470 bayt RAM ve 6 bayt zero page kullanıyor. Hedeflenen "64 bayttan az RAM" tutmadı: 10 iz (5 müzik + 5 efekt) × iz başına ~45 bayt durum gerekiyor. RAM bol olduğu için bu kabul edildi.
+- Motor bir karede ortalama ~6.500, en çok ~13.000 işlemci döngüsü harcıyor (karenin %6'sı / %12'si). Oyun hız testleri değişmeden geçiyor.
+- Motor bütün oyunlara girince 128 KB'lık kartuş taştı. Kartuş 256 KB'a (64 × 4 KB BRAM) çıkarıldı; `$0400`'dan yüklenen oyunların sınırı 30 KB'tan 31 KB'a (`$7FFF`'e kadar) genişletildi. Tılsım'ın çizimleri RLE ile sıkıştırıldı (`gfx.py --rle`, `k_vunpack`).
+
 ---
 
 ## Faz 2: APU v2 donanımı (Aşama B)

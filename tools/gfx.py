@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Turns a text graphics file into a C header for the konsol games.
 
-    gfx.py art.txt out.h [--tile-base 96]
+    gfx.py art.txt out.h [--tile-base 96] [--rle]
 
 art.txt:
     palette NAME 113 FFF 888 ...        up to 16 colours, 0xRGB (colour 0 = transparent / backdrop)
@@ -9,6 +9,8 @@ art.txt:
     big NAME         + 16 lines of 16 pixels     -> T_NAME (4 tiles: top-left, top-right, bottom-left, bottom-right)
     sprite NAME      + 16 lines of 16 pixels     -> S_NAME (sprite pattern)
 Pixels: '.' = 0, 1-9 and a-f = colours 1..15. Lines starting with # are comments.
+--rle: tiles_data and sprites_data are run-length packed (2-byte length, then blocks: c < $80: c + 1
+literal bytes, c >= $80: (c & $7F) + 2 copies of the next byte); the game unpacks them with k_vunpack.
 """
 import sys, argparse
 
@@ -22,10 +24,35 @@ def tile_bytes(rows):
             out.append(px(r[i]) << 4 | px(r[i + 1]))
     return out
 
+def rle(data):
+    out, lit, i = [], [], 0
+
+    def flush():
+        while lit:
+            chunk = lit[:128]
+            del lit[:128]
+            out.append(len(chunk) - 1)
+            out.extend(chunk)
+    while i < len(data):
+        j = i
+        while j < len(data) and data[j] == data[i] and j - i < 129:
+            j += 1
+        if j - i >= 3:
+            flush()
+            out += [0x80 | (j - i - 2), data[i]]
+            i = j
+        else:
+            lit.append(data[i])
+            i += 1
+    flush()
+    return [len(data) & 255, len(data) >> 8] + out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("src"); ap.add_argument("out")
     ap.add_argument("--tile-base", type=int, default=96)
+    ap.add_argument("--rle", action="store_true")
     a = ap.parse_args()
     lines = [l.rstrip("\n") for l in open(a.src)]
     tiles, sprites, pals, defs = [], [], [], []
@@ -66,6 +93,8 @@ def main():
         f.write(f"#define TILE_BASE {a.tile_base}\n#define TILE_COUNT {len(tiles)}\n#define SPRITE_COUNT {len(sprites)}\n")
         def arr(name, data):
             flat = [b for t in data for b in t]
+            if a.rle:
+                flat = rle(flat)
             f.write(f"static const unsigned char {name}[{max(1, len(flat))}] = {{\n")
             for k in range(0, len(flat), 16):
                 f.write("    " + ",".join(f"0x{b:02X}" for b in flat[k:k + 16]) + ",\n")

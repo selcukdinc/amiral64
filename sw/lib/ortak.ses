@@ -1,0 +1,46 @@
+# Shared instruments and waves for the konsol's music (include "../../lib/ortak.ses").
+# Volume sequences: v= one value a frame; | loop point, / release (what a rest plays).
+
+# ---- squares
+inst lead    v=8 12 11 10 | 10 / 8 6 4 3 2 1 0            d=2       # soft attack, 50 %
+inst lead25  v=9 13 12 11 | 10 / 8 6 4 3 2 1 0            d=1       # brighter, 25 %
+inst lead12  v=10 13 12 | 11 / 9 7 5 3 1 0                d=0       # thin, 12.5 %
+inst swell   v=3 5 7 9 10 11 | 11 / 9 7 5 3 2 1 0          d=2 2 | 1 1 2 2
+inst pluck   v=14 12 10 9 8 7 6 5 5 4 4 3 3 2 2 1 1 0      d=1
+inst pluck12 v=13 10 8 6 5 4 3 2 1 1 0                    d=0
+inst stab    v=13 11 9 7 5 4 3 2 1 0                      d=2
+inst echo    v=5 4 4 3 3 2 2 1 1 0                        d=1
+inst pad     v=2 3 4 5 6 7 | 7 / 6 5 4 3 2 1 0             d=2
+inst majarp  v=11 10 9 9 | 8 / 6 4 2 0        a=| 0 0 4 4 7 7      d=1
+inst minarp  v=11 10 9 9 | 8 / 6 4 2 0        a=| 0 0 3 3 7 7      d=1
+inst sus4arp v=11 10 9 9 | 8 / 6 4 2 0        a=| 0 0 5 5 7 7      d=1
+inst octarp  v=11 10 9 9 | 8 / 6 4 2 0        a=| 0 0 12 12        d=2
+inst blip    v=12 9 6 4 2 1 0                             d=1
+inst bend    v=10 12 11 10 | 10 / 7 4 2 0     p=6 4 3 2 1 1 0     d=2    # slides up into the note
+
+# ---- triangle
+inst bass    v=15 | 15 / 10 5 0
+inst bassp   v=15 15 14 13 12 11 10 9 | 9 / 5 0
+inst bassst  v=15 13 11 9 7 5 3 0
+inst kick    v=15 15 14 12 10 7 4 2 0       p=0 40 40 40 40 40 40 40 40
+inst tom     v=14 13 12 10 8 6 4 2 0        p=0 6 6 6 6 6 6 6 6
+
+# ---- noise (n0 highest .. n15 lowest)
+inst snare   v=14 12 10 8 7 6 5 4 3 2 1 0   a=0 0 1 1 2
+inst hat     v=7 4 2 0                      d=4
+inst ohat    v=7 6 5 4 3 3 2 2 1 1 0        d=4
+inst crash   v=12 11 10 9 9 8 8 7 7 6 6 5 5 4 4 4 3 3 3 2 2 2 1 1 1 0
+inst noisek  v=13 10 6 3 0                  a=0 2 4 6
+
+# ---- wave channel (APU v2)
+wave sine  8 9 11 12 13 14 15 15 15 15 15 14 13 12 11 9 8 6 4 3 2 1 0 0 0 0 0 1 2 3 4 6
+wave saw   0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 9 9 10 10 11 11 12 12 13 13 14 14 15 15
+wave organ 8 12 14 13 10 9 10 12 13 12 9 6 5 6 8 9 8 7 3 2 3 6 7 6 3 1 2 3 5 6 4 2
+wave vox   8 13 15 14 10 6 5 7 11 12 10 6 3 2 4 7 8 8 6 3 1 1 3 6 8 9 7 4 2 2 4 6
+wave pulse 15 15 15 15 15 15 15 15 15 15 15 15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+inst wsine   v=6 9 11 12 | 12 / 10 8 6 4 2 0   w=sine
+inst wsaw    v=10 12 11 | 10 / 8 6 4 2 0       w=saw
+inst worgan  v=11 12 | 12 / 10 8 6 4 2 0       w=organ
+inst wvox    v=4 7 10 12 | 12 / 10 8 6 4 2 0   w=vox
+inst wbass   v=15 | 15 / 10 5 0               w=pulse
+inst wpluck  v=15 13 11 9 8 7 6 5 4 3 2 1 0   w=saw

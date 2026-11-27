@@ -54,6 +54,38 @@ add_files sw/build/cart_1c.mem
 add_files sw/build/cart_1d.mem
 add_files sw/build/cart_1e.mem
 add_files sw/build/cart_1f.mem
+add_files sw/build/cart_20.mem
+add_files sw/build/cart_21.mem
+add_files sw/build/cart_22.mem
+add_files sw/build/cart_23.mem
+add_files sw/build/cart_24.mem
+add_files sw/build/cart_25.mem
+add_files sw/build/cart_26.mem
+add_files sw/build/cart_27.mem
+add_files sw/build/cart_28.mem
+add_files sw/build/cart_29.mem
+add_files sw/build/cart_2a.mem
+add_files sw/build/cart_2b.mem
+add_files sw/build/cart_2c.mem
+add_files sw/build/cart_2d.mem
+add_files sw/build/cart_2e.mem
+add_files sw/build/cart_2f.mem
+add_files sw/build/cart_30.mem
+add_files sw/build/cart_31.mem
+add_files sw/build/cart_32.mem
+add_files sw/build/cart_33.mem
+add_files sw/build/cart_34.mem
+add_files sw/build/cart_35.mem
+add_files sw/build/cart_36.mem
+add_files sw/build/cart_37.mem
+add_files sw/build/cart_38.mem
+add_files sw/build/cart_39.mem
+add_files sw/build/cart_3a.mem
+add_files sw/build/cart_3b.mem
+add_files sw/build/cart_3c.mem
+add_files sw/build/cart_3d.mem
+add_files sw/build/cart_3e.mem
+add_files sw/build/cart_3f.mem
 add_files -fileset constrs_1 constr/nexys4ddr.xdc
 add_files -fileset sim_1 hw/sim/xilinx_prims_sim.vhd
 add_files -fileset sim_1 hw/sim/tb_vga_timing.vhd
@@ -103,4 +135,36 @@ add_files -fileset sim_1 sw/build/carttest_1c.mem
 add_files -fileset sim_1 sw/build/carttest_1d.mem
 add_files -fileset sim_1 sw/build/carttest_1e.mem
 add_files -fileset sim_1 sw/build/carttest_1f.mem
+add_files -fileset sim_1 sw/build/carttest_20.mem
+add_files -fileset sim_1 sw/build/carttest_21.mem
+add_files -fileset sim_1 sw/build/carttest_22.mem
+add_files -fileset sim_1 sw/build/carttest_23.mem
+add_files -fileset sim_1 sw/build/carttest_24.mem
+add_files -fileset sim_1 sw/build/carttest_25.mem
+add_files -fileset sim_1 sw/build/carttest_26.mem
+add_files -fileset sim_1 sw/build/carttest_27.mem
+add_files -fileset sim_1 sw/build/carttest_28.mem
+add_files -fileset sim_1 sw/build/carttest_29.mem
+add_files -fileset sim_1 sw/build/carttest_2a.mem
+add_files -fileset sim_1 sw/build/carttest_2b.mem
+add_files -fileset sim_1 sw/build/carttest_2c.mem
+add_files -fileset sim_1 sw/build/carttest_2d.mem
+add_files -fileset sim_1 sw/build/carttest_2e.mem
+add_files -fileset sim_1 sw/build/carttest_2f.mem
+add_files -fileset sim_1 sw/build/carttest_30.mem
+add_files -fileset sim_1 sw/build/carttest_31.mem
+add_files -fileset sim_1 sw/build/carttest_32.mem
+add_files -fileset sim_1 sw/build/carttest_33.mem
+add_files -fileset sim_1 sw/build/carttest_34.mem
+add_files -fileset sim_1 sw/build/carttest_35.mem
+add_files -fileset sim_1 sw/build/carttest_36.mem
+add_files -fileset sim_1 sw/build/carttest_37.mem
+add_files -fileset sim_1 sw/build/carttest_38.mem
+add_files -fileset sim_1 sw/build/carttest_39.mem
+add_files -fileset sim_1 sw/build/carttest_3a.mem
+add_files -fileset sim_1 sw/build/carttest_3b.mem
+add_files -fileset sim_1 sw/build/carttest_3c.mem
+add_files -fileset sim_1 sw/build/carttest_3d.mem
+add_files -fileset sim_1 sw/build/carttest_3e.mem
+add_files -fileset sim_1 sw/build/carttest_3f.mem
 add_files -fileset sim_1 sw/build/cputest.mem

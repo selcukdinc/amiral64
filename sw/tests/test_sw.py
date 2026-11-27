@@ -333,7 +333,7 @@ def load_low(name):
     return k, syms
 
 k, S = load_low("tilsim")
-check("tilsim: fits below $7C00 (loads at $0400)", len(rom("game_tilsim.bin")) <= 0x7800)
+check("tilsim: fits below $8000 (loads at $0400)", len(rom("game_tilsim.bin")) <= 0x7C00)
 run(k, 70, shot="tilsim_title.png")
 check("tilsim: title with the seed", "KADERIN KARTLARI" in screen_text(k) and "TOHUM" in screen_text(k), screen_text(k))
 def tilsim_enter(k):
@@ -442,7 +442,7 @@ check("tilsim: Esc leaves the game (the boot ROM runs again)", k.pc >= 0xE000, f
 
 # ---------------------------------------------------------------- koridor 64
 k, S = load_low("koridor")
-check("koridor: fits below $7C00 (loads at $0400)", len(rom("game_koridor.bin")) <= 0x7800)
+check("koridor: fits below $8000 (loads at $0400)", len(rom("game_koridor.bin")) <= 0x7C00)
 run(k, 60, shot="koridor_title.png")
 check("koridor: title names the keys", "SHIFT" in screen_text(k) and "OKLAR" in screen_text(k), screen_text(k))
 hold(k, 0x10, 2); run(k, 20, shot="koridor_play.png")
@@ -481,6 +481,109 @@ check("koridor: level 2 follows", k.rd(S["_level"]) == 2 and "REAKTOR" in screen
 k.keys[0x76 >> 3] |= 1 << (0x76 & 7)                # Esc: back to the menu
 run(k, 3)
 check("koridor: Esc leaves the game", k.pc >= 0xE000, f"pc {k.pc:04X}")
+
+# ---------------------------------------------------------------- sound: APU model, sound engine
+import math
+import numpy as np
+from apu_model import APU, render_log, tone_stats
+def model_mean(writes, frames=30):
+    a = APU()
+    for r, v in writes: a.write(r, v)
+    return float(np.concatenate([a.render(735) for _ in range(frames)]).mean())
+sq = [(0x10, 15), (0x11, 15), (0, 194), (1, 0), (2, 0x1F), (3, 0)]
+f, _ = tone_stats([(0, r, v) for r, v in sq], 60)
+check("APU model: square P=194 at 1001.6 Hz (as tb_apu)", abs(f - 1001.6) < 4, f"{f:.1f} Hz")
+m = model_mean(sq)
+check("APU model: 25 % duty, volume 15, master 15 -> mean level 63.3", abs(m - 63.3) < 1.5, f"{m:.1f}")
+f, _ = tone_stats([(0, r, v) for r, v in [(0x10, 15), (0x11, 15), (8, 48), (9, 0), (10, 0x0F), (11, 0)]], 60)
+check("APU model: triangle P=48 at 996.5 Hz", abs(f - 996.5) < 4, f"{f:.1f} Hz")
+_, rms = tone_stats([(0, r, v) for r, v in [(0x10, 15), (0x11, 15), (12, 20), (13, 0), (14, 0x0F), (15, 0)]], 30)
+check("APU model: noise is heard", rms > 0.02, f"rms {rms:.3f}")
+
+def load_player(name):
+    k = Konsol(rom("boot.bin"))
+    g = rom(f"sesoyna_{name}.bin")
+    k.ram[0x400:0x400 + len(g)] = g
+    k.pc = 0x400
+    syms = {}
+    for l in open(os.path.join(B, f"sesoyna_{name}.lbl")):
+        _, addr, label = l.split()
+        syms[label.lstrip(".")] = int(addr, 16)
+    run(k, 5)
+    return k, syms
+NOTE_NAMES = "C C# D D# E F F# G G# A A# B".split()
+def note_of(period, tri=False):
+    f = 1562500 / ((32 if tri else 8) * (period + 1))
+    m = round(12 * math.log2(f / 440) + 57)
+    return f"{NOTE_NAMES[m % 12]}{m // 12}"
+def channel_notes(log, ch, frames, tri=False):
+    """the notes channel ch starts (period changes while its volume is up), in order"""
+    per, vol, out = 0, 0, []
+    byf = {}
+    for f, r, v in log: byf.setdefault(f, []).append((r, v))
+    for f in range(frames):
+        for r, v in byf.get(f, ()):
+            if r == 4 * ch: per = (per & 0xF00) | v
+            elif r == 4 * ch + 1: per = (per & 0xFF) | (v & 15) << 8
+            elif r == 4 * ch + 2: vol = v & 15
+        n = note_of(per, tri) if vol else None
+        if n and (not out or out[-1] != n): out.append(n)
+        if not vol and out and out[-1] is not None: out.append(None)
+    return [n for n in out if n]
+
+k, S = load_player("deneme")
+cyc = {"in": False, "n": 0, "sum": 0, "max": 0}
+tick, step0 = S["_ses_tick"], k.step
+def timed_step():
+    if not cyc["in"] and k.pc == tick:
+        cyc.update({"in": True, "sp": k.sp, "c0": k.cycles})
+    step0()
+    if cyc["in"] and k.sp == cyc["sp"] + 2:
+        c = k.cycles - cyc["c0"]; cyc["in"] = False
+        cyc["n"] += 1; cyc["sum"] += c; cyc["max"] = max(cyc["max"], c)
+k.step = timed_step
+k.wr(S["_secim"], 0); k.wr(S["_komut"], 1)
+k.apu_log = []
+f0 = k.frames
+run(k, 240)
+log = [(f - f0, r, v) for f, r, v in k.apu_log]
+mel = channel_notes(log, 0, 240)
+check("ses: the test song's melody (square 1)", mel[:5] == ["A5", "G5", "E5", "C5", "D5"], mel[:8])
+arp = channel_notes(log, 1, 60)
+check("ses: arpeggio chords on square 2 (A minor)", set(arp[:6]) == {"A4", "C5", "E5"}, arp[:8])
+bass = channel_notes(log, 2, 240, tri=True)
+check("ses: triangle bass and kick", "A3" in bass and len(bass) > 4, bass[:10])
+check("ses: noise drums", sum(1 for f, r, v in log if r == 14 and v & 15) >= 8)
+check("ses: no wave channel writes on an APU v1", not any(0x14 <= r <= 0x2F for f, r, v in log))
+check("ses: version 1 detected", k.rd(S["_surum"]) == 1)
+# an effect borrows square 1, then the music has it back
+k.wr(S["_secim"], 0); k.wr(S["_komut"], 2)
+k.apu_log = []
+f0 = k.frames
+run(k, 90)
+log = [(f - f0, r, v) for f, r, v in k.apu_log]
+fx = channel_notes(log, 0, 40)
+check("ses: the effect plays on square 1 (C5 E5 G5 C6 ...)", fx[:4] == ["C5", "E5", "G5", "C6"], fx[:8])
+check("ses: after the effect the music has square 1 again", k.rd(S["_ses_on"] + 5) == 0 and k.rd(S["_ses_on"]) == 1
+      and any(f > 50 and r == 2 and v & 15 for f, r, v in log))
+k.step = step0
+avg = cyc["sum"] // max(cyc["n"], 1)
+check("ses: the engine takes under 9 % of a frame (avg), 15 % at most", avg < 9400 and cyc["max"] < 15600,
+      f"avg {avg} max {cyc['max']} cycles of {6250000 // 60}")
+run(k, 700)
+check("ses: the song loops back (L)", k.rd(S["_ses_playing"]) == 1)
+k.wr(S["_komut"], 3); run(k, 3)
+check("ses: stop", k.rd(S["_ses_playing"]) == 0 and not any(k.rd(S["_ses_on"] + i) for i in range(5)))
+# the library's effects through k_sfx (the old SFX_ ids)
+k, S = load_player("std")
+for i in range(8):
+    k.wr(S["_secim"], i); k.wr(S["_komut"], 2)
+    k.apu_log = []
+    run(k, 4)
+    ok = any(r in (2, 6, 10, 14) and v & 15 for f, r, v in k.apu_log)
+    if not ok: break
+    run(k, 120)
+check("ses: the 8 standard effects play", ok, f"effect {i}")
 
 # no cartridge
 k = run(Konsol(rom("boot.bin"), b""), 150)

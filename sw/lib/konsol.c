@@ -136,19 +136,6 @@ void k_tone(unsigned char ch, unsigned period, unsigned char ctl, unsigned char 
     APU(b + 3) = env;      /* starts the note */
 }
 
-void k_sfx(unsigned char id) {
-    switch (id) {
-    case SFX_BLIP:   k_tone(0, 0x080, 0xAA, 0x01); break;
-    case SFX_SHOOT:  k_tone(1, 0x060, 0x9C, 0x00); break;
-    case SFX_BOOM:   k_tone(3, 0x018, 0x8F, 0x02); break;
-    case SFX_PICKUP: k_tone(0, 0x050, 0xAC, 0x01); break;
-    case SFX_FALL:   k_tone(3, 0x040, 0x88, 0x01); break;
-    case SFX_WIN:    k_tone(0, 0x07C, 0xAF, 0x04); k_tone(2, 0x030, 0x8F, 0x04); break;
-    case SFX_LOSE:   k_tone(2, 0x0C0, 0x8F, 0x05); break;
-    case SFX_TICK:   k_tone(1, 0x100, 0x86, 0x00); break;
-    }
-}
-
 void k_sound_off(void) { APU(0x11) = 0; }
 
 void k_seg_number(unsigned n) {

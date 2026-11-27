@@ -25,17 +25,42 @@ $(B)/konsol.o: lib/konsol.c lib/konsol.h $(B)/font.h | $(B)
 $(B)/koridor/art.h: games/koridor/art.txt ../tools/gfx.py
 	mkdir -p $(dir $@)
 	python3 ../tools/gfx.py $< $@ --tile-base 208
+# games short of room keep their graphics run-length packed (k_vunpack)
+RLE_GAMES = tilsim
+$(addprefix $(B)/,$(addsuffix /art.h,$(RLE_GAMES))): $(B)/%/art.h: games/%/art.txt ../tools/gfx.py
+	mkdir -p $(dir $@)
+	python3 ../tools/gfx.py $< $@ --rle
 $(B)/%/art.h: games/%/art.txt ../tools/gfx.py
 	mkdir -p $(dir $@)
 	python3 ../tools/gfx.py $< $@
-$(B)/%/main.o: games/%/main.c lib/konsol.h $(B)/%/art.h $(B)/font.h
+$(B)/%/main.o: games/%/main.c lib/konsol.h lib/ses.h $(B)/%/art.h $(B)/font.h
 	$(CC65) -O -t none -I lib -I games/$* -I $(B)/$* -I $(B) -o $(B)/$*/main.s $<
 	$(CA65) -o $@ $(B)/$*/main.s
+# music and sound effects of a game: games/<name>/muzik.ses (MML, tools/sesc.py) -> muzik.h + muzik.o
+SESC = python3 ../tools/sesc.py
+$(B)/%/muzik.h $(B)/%/muzik.s: games/%/muzik.ses lib/ortak.ses ../tools/sesc.py
+	mkdir -p $(dir $@)
+	$(SESC) $< $(B)/$*/muzik.s $(B)/$*/muzik.h
+$(B)/%/muzik.o: $(B)/%/muzik.s
+	$(CA65) -o $@ $<
 # optional library parts (linked only into the games that use them)
 $(B)/bigtext.o: lib/bigtext.c lib/bigtext.h lib/konsol.h | $(B)
 	$(CC65) -O -t none -I lib -o $(B)/bigtext.s $<
 	$(CA65) -o $@ $(B)/bigtext.s
-$(B)/konsolx.lib: $(B)/bigtext.o
+$(B)/vunpack.o: lib/vunpack.c lib/konsol.h | $(B)
+	$(CC65) -O -t none -I lib -o $(B)/vunpack.s $<
+	$(CA65) -o $@ $(B)/vunpack.s
+# the sound engine, the standard effects (lib/ses_std.ses) and k_sfx
+$(B)/ses.o: lib/ses.s | $(B)
+	$(CA65) -o $@ $<
+$(B)/ses_std.h $(B)/ses_std.s: lib/ses_std.ses ../tools/sesc.py | $(B)
+	$(SESC) $< $(B)/ses_std.s $(B)/ses_std.h std
+$(B)/ses_std.o: $(B)/ses_std.s
+	$(CA65) -o $@ $<
+$(B)/ksfx.o: lib/ksfx.c lib/konsol.h lib/ses.h $(B)/ses_std.h | $(B)
+	$(CC65) -O -t none -I lib -I $(B) -o $(B)/ksfx.s $<
+	$(CA65) -o $@ $(B)/ksfx.s
+$(B)/konsolx.lib: $(B)/bigtext.o $(B)/vunpack.o $(B)/ses.o $(B)/ses_std.o $(B)/ksfx.o
 	rm -f $@; ar65 a $@ $^
 # games bigger than 20 KB load at $0400 instead of $9000 (game_c_low.cfg; the cartridge entry says where)
 LOW_GAMES = tilsim koridor
@@ -46,8 +71,28 @@ $(B)/koridor/%.o: games/koridor/%.s | $(B)
 GAME_ASM_koridor = $(B)/koridor/blit.o $(B)/koridor/render.o $(B)/koridor/tables.o
 $(B)/koridor/main.o: games/koridor/tables.h
 .SECONDEXPANSION:
-$(B)/game_%.bin: $(B)/%/main.o $$(GAME_ASM_$$*) $(LIBOBJ) $(B)/konsolx.lib game_c.cfg game_c_low.cfg
-	$(LD65) -C $(if $(filter $*,$(LOW_GAMES)),game_c_low.cfg,game_c.cfg) -o $@ -Ln $(B)/game_$*.lbl -m $(B)/game_$*.map $(LIBOBJ) $< $(GAME_ASM_$*) $(B)/konsolx.lib $(NONELIB)
+GAME_SES = $(if $(wildcard games/$(1)/muzik.ses),$(B)/$(1)/muzik.o)
+$(B)/%/main.o: $$(if $$(wildcard games/$$*/muzik.ses),$(B)/$$*/muzik.h)
+$(B)/game_%.bin: $(B)/%/main.o $$(GAME_ASM_$$*) $$(call GAME_SES,$$*) $(LIBOBJ) $(B)/konsolx.lib game_c.cfg game_c_low.cfg
+	$(LD65) -C $(if $(filter $*,$(LOW_GAMES)),game_c_low.cfg,game_c.cfg) -o $@ -Ln $(B)/game_$*.lbl -m $(B)/game_$*.map $(LIBOBJ) $< $(GAME_ASM_$*) $(call GAME_SES,$*) $(B)/konsolx.lib $(NONELIB)
+
+# sound test player (tools/sesdinle.py): plays the songs and effects of one music file;
+# build/sesoyna_<name>.bin for games/<name>/muzik.ses, sesoyna_std for the library, sesoyna_deneme for tests
+$(B)/sesoyna/main.o: tests/sesoyna.c lib/konsol.h lib/ses.h | $(B)
+	mkdir -p $(dir $@)
+	$(CC65) -O -t none -I lib -I $(B) -o $(B)/sesoyna/main.s $<
+	$(CA65) -o $@ $(B)/sesoyna/main.s
+$(B)/deneme/muzik.h $(B)/deneme/muzik.s: tests/deneme.ses lib/ortak.ses ../tools/sesc.py
+	mkdir -p $(dir $@)
+	$(SESC) $< $(B)/deneme/muzik.s $(B)/deneme/muzik.h
+$(B)/std/muzik.h $(B)/std/muzik.s: lib/ses_std.ses ../tools/sesc.py
+	mkdir -p $(dir $@)
+	$(SESC) $< $(B)/std/muzik.s $(B)/std/muzik.h
+$(B)/sesoyna_%.bin: $(B)/sesoyna/main.o $(B)/%/muzik.o $(LIBOBJ) $(B)/konsolx.lib game_c_low.cfg
+	$(LD65) -C game_c_low.cfg -o $@ -Ln $(B)/sesoyna_$*.lbl $(LIBOBJ) $< $(B)/$*/muzik.o $(B)/konsolx.lib $(NONELIB)
+SES_NAMES = std deneme $(patsubst games/%/muzik.ses,%,$(wildcard games/*/muzik.ses))
+ses-dinle: $(foreach n,$(SES_NAMES),$(B)/sesoyna_$(n).bin)
+	python3 ../tools/sesdinle.py $(SES_NAMES)
 
 # Games on the cartridge: NAME:players:binary[:icon[:load address, hex]] ('*' = the launcher, started by the boot ROM)
 CART_GAMES = "*KONSOL:1:$(B)/game_launcher.bin" "KRISTAL OCAK:1:$(B)/game_kristal.bin:1" "BLOK YAGMURU:1:$(B)/game_blok.bin:5" "TILSIM:1:$(B)/game_tilsim.bin:6:0400" "YILDIZ MUHAFIZI:1:$(B)/game_yildiz.bin:2" "FITIL ARENASI:2-4:$(B)/game_fitil.bin:3" "MAHALLE OLIMPIYATI:1-4:$(B)/game_olimpiyat.bin:4" "KORIDOR 64:1:$(B)/game_koridor.bin:7:0400"
@@ -82,10 +127,10 @@ $(B)/%.mem: $(B)/%.bin
 $(B):
 	mkdir -p $(B)
 
-test: all
+test: all $(B)/sesoyna_deneme.bin $(B)/sesoyna_std.bin
 	python3 tests/test_sw.py
 
 clean:
 	rm -rf $(B)
-.PHONY: all test clean
+.PHONY: all test clean ses-dinle
 .SECONDARY:

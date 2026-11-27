@@ -1,6 +1,9 @@
 ; Interrupt handlers of the C game library: NMI = frame count + OAM DMA + raster split set-up,
 ; IRQ = raster split (new scroll from the split line on).
+; After its own work the NMI calls a hook (the sound engine, sw/lib/ses.s) when _k_nmi_hook_on is not zero:
+; set _k_nmi_hook first, then _k_nmi_hook_on (one byte, so an NMI never sees half an address).
         .export _frame_count, _split_line, _split_xl, _split_xh, _split_y, _k_install_irq
+        .export _k_nmi_hook, _k_nmi_hook_on
         .export _scroll_xl, _scroll_xh, _scroll_y
         .include "konsol.inc"
 
@@ -13,10 +16,14 @@ _split_y:   .res 1
 _scroll_xl: .res 1
 _scroll_xh: .res 1
 _scroll_y:  .res 1
+_k_nmi_hook: .res 2
+_k_nmi_hook_on: .res 1
 
         .code
 _k_install_irq:
         sei
+        lda #0
+        sta _k_nmi_hook_on
         lda #<nmi
         sta NMI_VEC
         lda #>nmi
@@ -52,8 +59,23 @@ nmi:    pha
         and #$F7
         sta PPU_CTRL
 @done:  inc _frame_count
+        lda _k_nmi_hook_on
+        beq @nohook
+        txa
+        pha
+        tya
+        pha
+        jsr callhook
+        pla
+        tay
+        pla
+        tax
+@nohook:
         pla
         rti
+
+callhook:
+        jmp (_k_nmi_hook)
 
 irq:    pha
         lda #$10                ; acknowledge the raster IRQ

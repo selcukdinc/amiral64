@@ -902,8 +902,8 @@ void main(void) {
     static const u8 slots[8] = { 0, 4, 8, 12, 16, 20, 24, 28 };
     k_init();
     PPU_CTRL = 0;
-    k_vcopy(TILE_BASE * 32, tiles_data, sizeof(tiles_data));
-    k_vcopy(0x2000, sprites_data, sizeof(sprites_data));
+    k_vunpack(TILE_BASE * 32, tiles_data);
+    k_vunpack(0x2000, sprites_data);
     k_palette(PAL_CRED, pal_cred, 16); k_palette(PAL_CRED + 1, pal_cblack, 16);
     k_palette(PAL_CRED + 2, pal_cred_s, 16); k_palette(PAL_CRED + 3, pal_cblk_s, 16);
     k_palette(PAL_CRED + 4, pal_cred_g, 16); k_palette(PAL_CRED + 5, pal_cblk_g, 16);

@@ -1,0 +1,18 @@
+# Test song of the sound engine: every feature once (tools/sesdinle.py deneme, sw/tests/test_sw.py).
+include ../lib/ortak.ses
+
+macro davul  @kick o4 c8 @bassp
+macro ritim  @hat n1,8 n1 @snare n6 @hat n1 n1 n1 @snare n6 @hat n1
+
+song deneme bpm=120
+  sq1: v13 @lead ~2,6 L o5 a4. g8 e4 c8 d8 | e4. g8 a4 >c8 <b8 | a4. g8 e4 d8 c8 | d2 r4 @pluck e8 g8
+  sq1:     @lead o5 a4. >c8 d4 e8 d8 | c4. <b8 a4 g8 e8 | p12 @swell f4 a4 >c4 <b4 | p0 @lead a2. r4
+  sq2: v9 L o4 [@minarp a4 a4 @majarp f4 f4 @majarp c4 c4 @majarp g4 g4]2
+  tri: L o3 [*davul a8 a8 *davul a8 >a8< *davul f8 f8 *davul g8 g8]4
+  noi: L [*ritim]8
+  wav: v10 @wvox L o4 [e2 f2 e2 d2]2
+end
+
+sfx deneme_zip pri=5
+  sq1: @blip o5 c2 e2 g2 >c2 e2 g2 >c6
+end

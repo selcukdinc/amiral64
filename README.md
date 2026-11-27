@@ -43,7 +43,7 @@ Terminalde `amiral64` klasöründe:
 make -C sw
 ```
 
-Bu komut boot ROM'u, launcher'ı, yedi oyunu ve kartuşu (128 KB) derler. Bitince `sw/build/` klasöründe
+Bu komut boot ROM'u, launcher'ı, yedi oyunu ve kartuşu (256 KB) derler. Bitince `sw/build/` klasöründe
 `boot.mem`, `cart_00.mem` … `cart_1f.mem` ve `cart.bin` dosyaları olur. "Warning: 'sprites_data' is defined but never used" gibi
 uyarılar normaldir.
 
@@ -439,7 +439,7 @@ Sırayla dene ve her biri için ✓ ya da gördüğün farkı not al:
 | Ekran siyah, UART'ta da bir şey yok | CPU RESET'e bas. Hâlâ yoksa bitstream'in doğru yüklendiğinden emin ol (Messages). Bu, kartta ilk kez denenen bitstream olduğu için bildirilmesi gereken önemli bir bulgudur |
 | Görüntü kaymış, titriyor | Monitörün otomatik ayarını kullan; çözünürlük 640x480 @ 60 Hz |
 | Seçme ekranı yerine boot ROM menüsü geliyor | Açılışta Select (Tab) basılı mı, ya da bir NES kolunda Select takılı mı kalmış? Kartuş eski (launcher'sız) olabilir: `make -C sw` ve yeniden bitstream |
-| Sentez `bram: cannot open cart_10.mem` hatasıyla duruyor | Proje, kartuş 128 KB'a (32 blok) büyümeden önce oluşturulmuş: içinde yalnızca `cart_00…0f.mem` var. `vivado/create_project.tcl`'i yeniden çalıştır (2. bölüm) ya da Tcl Console'da `add_files ../sw/build/cart_10.mem` … `cart_1f.mem` |
+| Sentez `bram: cannot open cart_20.mem` (ya da `cart_10.mem`) hatasıyla duruyor | Proje, kartuş 256 KB'a (64 blok) büyümeden önce oluşturulmuş: içinde yalnızca `cart_00…1f.mem` (ya da `…0f`) var. `vivado/create_project.tcl`'i yeniden çalıştır (2. bölüm) ya da Tcl Console'da eksik `add_files ../sw/build/cart_NN.mem` satırlarını (`cart_3f.mem`'e kadar) ekle |
 | Menüde `KARTUS BULUNAMADI` | `make -C sw` çalıştırılmadan bitstream üretilmiş olabilir. `make -C sw`, sonra yeniden Generate Bitstream |
 | Ses yok | Kulaklığı kartın ses jakına tak, sesi biraz aç. Açılış melodisi her resetten sonra çalar |
 | Klavye çalışmıyor, BUSY (sarı) LED yanıp sönüyor | PS/2 hatlarında FPGA'nın pull-up'ları yoksa PIC24 tuşları gönderemez. 20 Kasım'dan önceki bitstream'lerde bu eksikti: VivadoMac'i ve bitstream'i yeniden üret. Klavyeyi **USB HOST** portuna doğrudan tak (hub olmaz) |
@@ -500,7 +500,7 @@ tests/run_tests.sh flow     # VivadoMac ile sentez, yerleştirme, bitstream
   Oyunlar `$9000`'a yüklenir (en çok 20 KB); daha büyükleri (Tılsım, 25 KB) `$0400`'e yüklenir, değişkenleri
   `$9000`'da durur (`sw/game_c_low.cfg`). Kartuş dizinindeki her kayıt kendi yükleme adresini taşır.
   `$02E0-$02FF`: oyunlar arası küçük kayıt alanı (en iyi puanlar, launcher'ın son seçimi).
-- Kartuş: 128 KB (32 x 4 KB blok RAM), dizinde en çok 8 kayıt; ilk kayıt bayrağıyla launcher olabilir. Boot ROM
+- Kartuş: 256 KB (64 x 4 KB blok RAM), dizinde en çok 8 kayıt; ilk kayıt bayrağıyla launcher olabilir. Boot ROM
   `$FFF0`'da bir giriş sunar: `A` = dizin sırası ile `JSR $FFF0` o oyunu yükleyip başlatır.
   Register listesi: `sw/include/konsol.inc` ve `hw/` içindeki her bloğun baş açıklaması.
 - PPU: 320x240, VGA 640x480 @ 60 Hz'te 2 kat büyütülmüş; 64x32 karo haritası ve kaydırma; 256 karo; 16x16'lık 64
